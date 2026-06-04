@@ -1,15 +1,3 @@
-(* let _ = Mltop.add_known_module "gcd"
-let () = Tacentries.tactic_extend "gcd" "factorize_tactic" ~level:0 
-[(
-Tacentries.TyML (Tacentries.TyIdent ("factorize", Tacentries.TyArg (Extend.TUentry (Genarg.get_arg_tag wit_constr), Tacentries.TyNil)), 
-(fun t ist -> 
-                                                                    
-# 9 "gcd/gcd.mlg"
-    let (numr,denomr,gcd) =  factorize t in 
-    Tacticals.tclIDTAC 
-# 15 "gcd/gcd.ml"
-)))] *)
-
 (* ══════════════════════════════════════════════════════════════════════
    Rational numbers
    ══════════════════════════════════════════════════════════════════════ *)
@@ -407,6 +395,14 @@ let poly_gcd_and_lcm (p: poly) (q: poly) : poly * poly =
 let poly_gcd (p: poly) (q: poly) : poly = fst (poly_gcd_and_lcm p q)
 let poly_lcm (p: poly) (q: poly) : poly = snd (poly_gcd_and_lcm p q)
 
+let factorize (p: poly) (q: poly) : poly * poly =
+  let mp = normalise_lex (collect (to_mpoly p)) in
+  let mq = normalise_lex (collect (to_mpoly q)) in
+  let gcd = poly_gcd p q in
+  let mgcd = normalise_lex (collect (to_mpoly gcd)) in
+  let mp1 =  normalise_lex (div_mpoly mp mgcd) in
+  let mq1 =  normalise_lex (div_mpoly mq mgcd) in
+  (mpoly_to_poly mp1, mpoly_to_poly mq1)
 
 (* ══════════════════════════════════════════════════════════════════════
    Example

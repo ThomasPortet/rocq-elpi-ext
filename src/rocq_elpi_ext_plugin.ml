@@ -69,11 +69,28 @@ let compute_poly_api = API.BuiltIn.MLCode(Pred("compute_poly",
     Easy("AAA"))),
     fun a _ ~depth -> (), Some ( a)),
     DocAbove)
+let gcd_poly_api = API.BuiltIn.MLCode(Pred ("gcd_poly",
+    In(poly_, "poly1",
+    In(poly_, "poly2",
+    Out(poly_, "gcd",
+    Easy("AAA")))),
+    fun a (b : poly) _ ~depth -> (), Some ( poly_gcd a b)),
+    DocAbove)
+let factorize_poly_api = API.BuiltIn.MLCode(Pred ("factorize_poly",
+    In(poly_, "poly1",
+    In(poly_, "poly2",
+    Out(poly_, "poly1",
+    Out(poly_, "poly2",
+    Easy("AAA"))))),
+    fun (a:poly) (b : poly) _ _ ~depth -> ((), Some(fst (factorize a b))), Some (snd (factorize a b))),
+    DocAbove)
 
 let builtins =
   API.BuiltIn.declare ~file_name:"ext.elpi" [
   MLData rat_;
   MLData poly_;
   compute_rat_api;
-  compute_poly_api
+  compute_poly_api;
+  gcd_poly_api;
+  factorize_poly_api
 ]

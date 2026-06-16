@@ -1,13 +1,11 @@
 
 From elpi Require Import elpi ext.
-From Gcd.src Extra Dependency "encode.elpi" as encode.
+From elpi.ext Extra Dependency "encode.elpi" as encode.
 
 From Stdlib Require Import Field Ring_polynom Reals.
 
 Elpi Command test.
 Elpi Accumulate Plugin "ext.elpi".
-Check (fun x => Npos (xO x)).
-
 Open Scope R_scope.
 Parameter x : R.
 Definition x1 := (x^5 + 4*x^3 + 5*x^2 + 3*x + 15).
@@ -25,8 +23,7 @@ Definition wrapper_F (x : FExpr Z) :=
 True.
 Definition wrapper_LR (x : list R) :=
 True.
-Check (`C[2%Z] + `V[3] *`C[4%Z]^2).
-Check ( `V[1]).
+
 
 Goal True.
 unshelve (epose (x:= _ :nat)).
@@ -47,7 +44,6 @@ True.
 Definition wrapped_result (t: Z * (PExpr Z * (PExpr Z * PExpr Z))) :=
 True.
 
-Check wrapped_result (0%Z , (PEO, (PEO, PEO))).
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.
@@ -146,6 +142,8 @@ Elpi Accumulate lp:{{
 }}.
 Goal True.
 gcd_for_field (PX (Pc ((- 1)%Z)) 2%positive (Pc 1%Z))  (PX (Pc (1%Z)) 1%positive (Pc 1%Z)).
+easy.
+Qed.
 
 Ltac simplify_by_gcd n d :=
  unshelve foo1 n d; cbv [Peeval' PEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.

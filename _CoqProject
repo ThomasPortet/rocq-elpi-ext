@@ -4,12 +4,17 @@
 
 # Plugins.
 
+# Plugins.
+
 -I _build/install/default/lib
 
 # Theories
+
+-R theories elpi.ext
 -R _build/default/theories elpi.ext
 
--R theories ext
--R . Gcd
 -Q tests ext.tests
 -Q _build/default/tests ext.tests
+
+-Q elpi elpi.elpi
+-Q _build/default/elpi elpi.elpi

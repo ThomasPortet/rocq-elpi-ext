@@ -153,3 +153,43 @@ Goal True.
 
 easy.
 Qed.
+Notation "x + y" := (@PEadd Z x y).
+Notation "x - y" := (@PEsub Z x y).
+Notation "x * y" := (@PEmul Z x y).
+Notation "`C[ n ]" := (@PEc Z n).
+Notation "x ^ y" := (@PEpow Z x (Npos y%positive)).
+Notation " - y" := (@PEopp Z y ).
+Notation "'x" := (@PEX Z 1%positive).
+Notation "'y" := (@PEX Z 2%positive).
+Notation "'z" := (@PEX Z 3%positive).
+Definition norm := norm_aux 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb.
+
+Definition p1 := 'x ^ 2 + (`C[ 3%Z ]) *'y ^ 3 - 'z .
+Definition pol1 := norm p1.
+
+Definition p2 := ('x ^ 2 + 'y) * (`C[ 3%Z ] *'y ^ 4 - 'x ^ 3).
+Definition pol2 := norm p2.
+
+Definition p3 := ('x ^ 3 + 'y) * ('y  - 'x ^ 3).
+Definition pol3 := norm p3.
+
+Elpi Accumulate File encode.
+
+Elpi Query lp:{{
+  coq.reduction.vm.norm {{pol1}} _ X1,
+  pol_encode X1 Pol1,
+  pe_decode Pol1 P1,
+  coq.term->string P1 PS1,
+  coq.reduction.vm.norm {{pol2}} _ X2,
+  pol_encode X2 Pol2,
+  pe_decode Pol2 P2,
+  coq.term->string P2 PS2,
+  coq.reduction.vm.norm {{pol3}} _ X3,
+  pol_encode X3 Pol3,
+  pe_decode Pol3 P3,
+  coq.term->string P3 PS3
+
+
+}}.
+Print N.
+Check (PEopp (PEmul 'x (PEmul 'x (PEmul 'x (PEmul 'x (PEmul 'x 'x))))) + PEmul 'y 'y).

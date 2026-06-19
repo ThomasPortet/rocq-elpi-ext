@@ -15,11 +15,9 @@ Ltac compute_gcd D N :=
 
 Ltac compute_gcd' D N :=
 gcd_for_field N D;
-
-match goal with |- wrapped_result (?Co, (?D',(?N', ?Gcd'))) -> _
+match goal with |- wrapped_result (?F, (?N',(?D', ?Gcd'))) -> _
 => intros _;
-  constr:((pair 1%Z (pair (PX (Pc 2) 1 (Pc 0))
-    (pair (Pc 1) (PX (Pc 1) 1 (Pc 0))))%Z))
+  constr:(pair F (pair N' (pair D' Gcd')))
     end.
 
 
@@ -50,9 +48,9 @@ Ltac find_fraction dummy :=
     let fact_n0 := fresh "factor_not_0" in
     let num_eq := fresh "equality_for_numerator" in
     let den_eq := fresh "equality_for_denumerator" in
-      idtac D1 N1; compute_gcd' D1 N1
-      (* match goal with 
-        |- wrapped_result (?F, (?D2,(?N2, ?Gcd))) -> _
+      gcd_for_field N1 D1;
+      match goal with 
+        |- wrapped_result (?F ,(?N2,(?D2, ?Gcd))) -> _
         => intros _;
         assert (fact_n0 : IZR F <> 0) by (apply eq_IZR_contrapositive; easy);
         enough (gcd_cond 0 1 Rplus Rmult Rminus Ropp eq 0%Z 1%Z Z.eqb IZR
@@ -78,11 +76,12 @@ Ltac find_fraction dummy :=
            split;[split;[intros [? [? ?]]; easy|
           reduce_Pphi_pow] |easy ]
         ]
-      end *)
+        | _ => fail 1000 "find_fraction: wrong shape of result from compute_gcd"
+      end
     end
   end.
 
-Ltac fs5 := Field_simplify_gcd RField_lemma5 ltac:( fun _ => idtac ).
+Ltac fs5 := Field_simplify_gcd RField_lemma5 ltac:(find_fraction).
 
 Ltac tester f := idtac; f.
 Locate "`V[ _ ]".

@@ -41,8 +41,10 @@ Definition wrapper_PolZ (x : Pol Z) :=
 True.
 
 
-Definition wrapped_result (t: Z * (Z *  (PExpr Z * (PExpr Z * PExpr Z)))) :=
+Definition wrapped_result (t: Z *  (Pol Z * (Pol Z * Pol Z))) :=
 True.
+
+Definition norm := norm_aux 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb.
 
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
@@ -52,17 +54,18 @@ Elpi Accumulate lp:{{
 solve (goal _ _ T _ _  as G) GL :-
 
   T = {{wrapper_PolZ lp:D -> wrapper_PolZ lp:N -> _ }},
-  gcd_and_factors pol_encode pe_decode N D N' D' Gcd CoNG CoDG,
+  gcd_and_factors pol_encode pe_decode N D N' D' Gcd LCM,
+  coq.reduction.vm.norm {{norm lp:N'}} {{Pol Z}} N'',
+  coq.reduction.vm.norm {{norm lp:D'}} {{Pol Z}} D'',
+  coq.reduction.vm.norm {{norm lp:Gcd}} {{Pol Z}} Gcd',
+  (refine {{_  (I : (wrapped_result (pair lp:LCM (pair lp:N'' (pair lp:D'' lp:Gcd')))))}} G GL).
 
-  (refine {{_  (I : (wrapped_result (pair lp:CoNG (pair lp:CoDG (pair lp:N' (pair lp:D' lp:Gcd))))))}} G GL).
 
 solve (goal _ _ {{wrapper_LR lp:L -> wrapper_F lp:D -> wrapper_F lp:N -> _}} _ _ as G ) GL :-
-
-  gcd_and_factors fe_encode fe_decode N D N' D' Gcd CoNG CoDG,
-
+  gcd_and_factors fe_encode fe_decode N D N' D' Gcd LCM,
   (refine 
-  {{let H : (1%R/(IZR lp:CoNG) *(Feeval' lp:L lp:N))%R = Feeval' lp:L (@FEmul Z lp:N' lp:Gcd) := _ in 
-  let H' : (1%R/(IZR lp:CoDG) *(Feeval' lp:L lp:D))%R = Feeval' lp:L (@FEmul Z lp:D' lp:Gcd) := _ in _}}
+  {{let H : (1%R/(IZR lp:LCM) *(Feeval' lp:L lp:N))%R = Feeval' lp:L (@FEmul Z lp:N' lp:Gcd) := _ in 
+  let H' : (1%R/(IZR lp:LCM) *(Feeval' lp:L lp:D))%R = Feeval' lp:L (@FEmul Z lp:D' lp:Gcd) := _ in _}}
   G GL)
 .
 }}.
@@ -97,8 +100,7 @@ let l' := FFV IZR_tac Rpow_tac 0 1 Rplus Rmult Rminus Ropp Rdiv Rinv pow d l in
     simpl BinNat.N.of_nat;
     match goal with  |- 
       wrapper_LR ?l'' -> wrapper_F ?d'' -> wrapper_F ?n'' -> _ =>
-      idtac "hello";(elpi factorize_by_gcd n'' d''); intros _ _ _
-      (* idtac *)
+      (elpi factorize_by_gcd n'' d''); intros _ _ _
       end.  
 Close Scope R_scope.
 
@@ -133,7 +135,6 @@ Notation " - y" := (@PEopp Z y ).
 Notation "'x" := (@PEX Z 1%positive).
 Notation "'y" := (@PEX Z 2%positive).
 Notation "'z" := (@PEX Z 3%positive).
-Definition norm := norm_aux 0%Z 1%Z Z.add Z.mul Z.sub Z.opp Z.eqb.
 
 Definition p1 := 'x ^ 2 + (`C[ 3%Z ]) *'y ^ 3 - 'z .
 Definition pol1 := norm p1.

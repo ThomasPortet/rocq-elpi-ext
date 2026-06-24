@@ -74,10 +74,20 @@ Ltac find_fraction dummy :=
              cbv [PCond condition PEeval BinList.nth BinNat.N.to_nat
                   List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op]]
           end
-        |
-           split;[split;[intros [? [? ?]]; easy|
-          reduce_Pphi_pow] |easy ]
-        ]
+          |
+          clear hyp fact_n0;
+          split;       
+           [split; 
+            [
+              match goal with 
+              | |-  (_ -> _)  =>
+              intros [? [? ?]]; easy
+               | |- ?G  => try easy; intros [?[H H1]]; apply Z.eqb_eq in H1; unfold norm_subst in H; simpl in H; subst; easy
+              end
+            | reduce_Pphi_pow
+            ] 
+          | easy]
+       ]
         | _ => fail 1000 "find_fraction fail"
       end
     end
@@ -85,25 +95,15 @@ Ltac find_fraction dummy :=
 
 Ltac fs5 := Field_simplify_gcd RField_lemma5 ltac:(find_fraction).
 
-Ltac tester f := idtac; f.
-Locate "`V[ _ ]".
 Lemma toto : PI / (PI ^ 2 + PI ^ 2) = exp 1 / (exp 1 + exp 1).
 (* find_fraction (). *)
 field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)).
-field_simplify_gcd fs5 / (exp 1 / (exp 1 + exp 1)).
+Admitted.
+ Lemma toto3 x : (3*x + 6 )/3 = x+2.
+ field_simplify_gcd fs5  / ((3*x + 6 )/3).
+easy.
 Admitted.
 
-Lemma toto2 x : (2* x^2 + 4)/(4* x^3 - 4 * x^2 + 8*x -8 ) = 1 / (2 * x - 2).
-field_simplify_gcd fs5  / ((2* x^2 + 4)/(4* x^3 - 4 * x^2 + 8*x -8 )).
-
-reflexivity.
-admit.
-
-admit.
-Admitted.
-
-
-Lemma toto3 x : (3*x + 6 )/3 = x+2.
-Fail field_simplify_gcd fs5  / ((3*x + 6 )/3).
-
+Lemma toto4 x :(x + 2) /(3/3) = x + 2.
+ field_simplify_gcd fs5  / ((x + 2) /(3/3)).
 Admitted.

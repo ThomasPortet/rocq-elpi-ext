@@ -6,15 +6,6 @@ let declare = let open API.AlgebraicData in declare
 
 
 
-type mysumT = | MyC : int -> mysumT | MyA : (mysumT * mysumT) -> mysumT
-
-let rec compute (s : mysumT) = match s with
-  | MyC n -> n
-  | MyA (s1, s2) -> compute s1 + compute s2
-
-let myC = E.Constants.declare_global_symbol "myC"
-let myA = E.Constants.declare_global_symbol "myA"
-
 let gRat = E.Constants.declare_global_symbol "rat"
 let gConst = E.Constants.declare_global_symbol "gconst"
 let gVar = E.Constants.declare_global_symbol "var"
@@ -27,7 +18,7 @@ let embed_rat = function
 
 let rat_ = API.(AlgebraicData.declare {
   ty = TyName "ratT";
-  doc = "blibli";
+  doc = "a type of rational numbers viewed as pairs of int values";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
   constructors = [
     K("rat","",A(BuiltInData.int,A (BuiltInData.int, N)),
@@ -44,7 +35,7 @@ let compute_rat_api = API.BuiltIn.MLCode(Pred("compute",
 
 let poly_ = API.(AlgebraicData.declare {
   ty = TyName "polyT";
-  doc = "blibli";
+  doc = "A type of ring expressions, obtained simply with addition, multiplication, variables, and integer constants";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
   constructors = [
     K("gconst","",A(rat_, N),

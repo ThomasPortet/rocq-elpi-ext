@@ -163,21 +163,29 @@ multiply_if_gt_one P N P1 :-
   multiply_lcm_poly P N P1.
 multiply_if_gt_one P _ P.
 
+% compute_multipliers G, D, N -> G' D' N' M
+% G' * D' = M * G * D and G' * N' = M * G * D
+% M is a non-zero integer and G', D', and N' only have integer coefficient
+% while G, D, and N where polynomials with rational coefficients
+func compute_multipliers polyT, polyT, polyT -> polyT, polyT, polyT, int.
+compute_multipliers G D N G' D' N' M :-
+  collect_glob_lcm_poly N 1 LCMN,
+  collect_glob_lcm_poly D 1 LCMD,
+  collect_glob_lcm_poly G 1 LCMG,
+  lcm_int LCMN LCMD LCMND,
+  multiply_if_gt_one N LCMND N',
+  multiply_if_gt_one D LCMND D',
+  multiply_if_gt_one G LCMG G',
+  M is LCMND * LCMG.
+
 % encoding func, decoding func, N , D -> N', D', Gcd, LCM
 func gcd_and_factors (func term -> polyT), (func polyT -> term), term, term -> term, term, term, term.
-gcd_and_factors Encoder Decoder N D Ne De Gcd' LCMZ :-
+gcd_and_factors Encoder Decoder N D Ne De Gcd' MZ :-
   Encoder N Nx,
   Encoder D Dx,
   gcd_poly Nx Dx Gcd Ne' De',
-  collect_glob_lcm_poly Ne' 1 LCMN,
-  collect_glob_lcm_poly De' 1 LCMD,
-  collect_glob_lcm_poly Gcd 1 LCMG,
-  lcm_int LCMN LCMD LCMND,
-  multiply_if_gt_one Ne' LCMND N',
-  multiply_if_gt_one De' LCMND D',
-  multiply_if_gt_one Gcd LCMG G',
+  compute_multipliers Gcd Ne' De' G' N' D' M,
   Decoder N' Ne,
   Decoder D' De,
   Decoder G' Gcd',
-  LCM2 is LCMND * LCMG,
-  z_decode LCM2 LCMZ.
+  z_decode M MZ.

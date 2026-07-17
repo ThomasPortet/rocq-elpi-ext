@@ -114,8 +114,8 @@ Qed.
 Elpi Tactic toto.
 From elpi.ext Extra Dependency "encode.elpi" as encode.
 
-Elpi Accumulate File encode.
 Elpi Accumulate Plugin "ext.elpi".
+Elpi Accumulate File encode.
 
 Elpi Query lp:{{
   sigma P Q R V1 V2 T1 T2 V1_w V2_w Ne Ne' N' De De' D' Gcd' G' Gcd\

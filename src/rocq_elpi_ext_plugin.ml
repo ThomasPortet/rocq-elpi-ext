@@ -1,16 +1,6 @@
-open Gcd
 module API = Elpi.API
-module E = API.RawData
 
-let declare = let open API.AlgebraicData in declare
-
-let gRat = E.Constants.declare_global_symbol "rat"
-let gNum = E.Constants.declare_global_symbol "num"
-let gVar = E.Constants.declare_global_symbol "var"
-let gAdd = E.Constants.declare_global_symbol "add"
-let gMul = E.Constants.declare_global_symbol "mul"
-
-let rat_ = API.(AlgebraicData.declare {
+let rat_ = API.AlgebraicData.declare {
   ty = TyName "ratT";
   doc = "a type of rational numbers viewed as pairs of int values";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
@@ -19,9 +9,9 @@ let rat_ = API.(AlgebraicData.declare {
       A(BuiltInData.int,A (BuiltInData.int, N)),
       B (fun n d -> { num = n; den = d }),
       M (fun ~ok ~ko t -> match t with { num = n; den = d } -> ok n d ))]
-} |> ContextualConversion.(!<))
+} |> ContextualConversion.(!<)
 
-let poly_ = API.(AlgebraicData.declare {
+let poly_ = API.AlgebraicData.declare {
   ty = TyName "polyT";
   doc = "A type of ring expressions, simply with numeric constants," ^
         " variables, addition, and multiplication";
@@ -40,8 +30,7 @@ let poly_ = API.(AlgebraicData.declare {
       B (fun x y -> Mul (x, y)),
       M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ())); 
       ]
-} |> ContextualConversion.(!<))
-
+} |> ContextualConversion.(!<)
 
 let gcd_poly_api = API.BuiltIn.MLCode(Pred ("gcd_poly",
     In(poly_, "poly1",
@@ -53,7 +42,7 @@ let gcd_poly_api = API.BuiltIn.MLCode(Pred ("gcd_poly",
          " poly1_div is poly1/gcd," ^
          " poly2_div is poly2/gcd")))))),
     fun (a : poly) (b : poly) _ _ _ ~depth -> 
-      let result_tuple : poly * poly * poly = poly_gcd a b in
+      let result_tuple : poly * poly * poly = Gcd.poly_gcd a b in
       (match result_tuple with
         (v1, v2, v3) -> (((), Some v1), Some v2), Some v3)),
     DocAbove)

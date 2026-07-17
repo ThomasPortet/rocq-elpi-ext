@@ -15,7 +15,7 @@ let rat_ = AlgebraicData.declare {
       M (fun ~ok ~ko t -> match t with { num = n; den = d } -> ok n d ))]
 } |> (!<)
 
-let poly_ = API.AlgebraicData.declare {
+let poly_ = AlgebraicData.declare {
   ty = TyName "polyT";
   doc = "A type of ring expressions, simply with numeric constants," ^
         " variables, addition, and multiplication";
@@ -32,23 +32,23 @@ let poly_ = API.AlgebraicData.declare {
       M (fun ~ok ~ko t -> match t with Add (x,y) -> ok x y | _ -> ko ()));
     K("mul","binary multiplication",S(S(N)),
       B (fun x y -> Mul (x, y)),
-      M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ())); 
+      M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ()));
       ]
-} |> API.ContextualConversion.(!<)
+} |> (!<)
 
-let gcd_poly_api = API.BuiltIn.MLCode(Pred ("gcd_poly",
-    In(poly_, "poly1",
-    In(poly_, "poly2",
-    Out(poly_, "gcd",
-    Out (poly_, "poly1_div",
-    Out (poly_, "poly2_div",
-    Easy("gcd is the greatest common divisor of poly1 and poly2," ^ 
-         " poly1_div is poly1/gcd," ^
-         " poly2_div is poly2/gcd")))))),
-    fun (a : poly) (b : poly) _ _ _ ~depth -> 
-      let result_tuple : poly * poly * poly = Gcd.poly_gcd a b in
-      (match result_tuple with
-        (v1, v2, v3) -> (((), Some v1), Some v2), Some v3)),
+
+open BuiltInPredicate.Notation
+
+let gcd_poly_api =
+    let ty = poly_ in
+    BuiltIn.MLCode(Pred ("gcd_poly",
+    In(ty, "p1", In(ty, "p2",
+    Out(ty, "gcd",Out (ty, "p1_div",Out (ty, "p2_div",
+    Easy("gcd is the greatest common divisor of polynomials p1 and p2," ^
+         " p1_div is p1/gcd, p2_div is p2/gcd")))))),
+    fun a b _ _ _ ~depth ->
+      (match Gcd.poly_gcd a b with
+        (v1, v2, v3) -> !: v1 +! v2 +! v3)),
     DocAbove)
 
 let builtins =

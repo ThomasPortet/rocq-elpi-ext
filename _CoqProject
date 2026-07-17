@@ -18,3 +18,5 @@
 
 -Q elpi elpi.elpi
 -Q _build/default/elpi elpi.elpi
+
+-R ../stdlib/theories Stdlib

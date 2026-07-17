@@ -51,23 +51,14 @@ Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate File encode.
 Elpi Accumulate lp:{{
 
-solve (goal _ _ T _ _  as G) GL :-
+solve (goal _ _ _ _ [trm N, trm D]  as G) GL :-
 
-  T = {{wrapper_PolZ lp:D -> wrapper_PolZ lp:N -> _ }},
   gcd_and_factors pol_encode pe_decode N D N' D' Gcd LCM,
   coq.reduction.vm.norm {{norm lp:N'}} {{Pol Z}} N'',
   coq.reduction.vm.norm {{norm lp:D'}} {{Pol Z}} D'',
   coq.reduction.vm.norm {{norm lp:Gcd}} {{Pol Z}} Gcd',
-  (refine {{_  (I : (wrapped_result (pair lp:LCM (pair lp:N'' (pair lp:D'' lp:Gcd')))))}} G GL).
+  (refine {{pair lp:LCM (pair lp:N'' (pair lp:D'' lp:Gcd'))}} G GL).
 
-
-solve (goal _ _ {{wrapper_LR lp:L -> wrapper_F lp:D -> wrapper_F lp:N -> _}} _ _ as G ) GL :-
-  gcd_and_factors fe_encode fe_decode N D N' D' Gcd LCM,
-  (refine 
-  {{let H : (1%R/(IZR lp:LCM) *(Feeval' lp:L lp:N))%R = Feeval' lp:L (@FEmul Z lp:N' lp:Gcd) := _ in 
-  let H' : (1%R/(IZR lp:LCM) *(Feeval' lp:L lp:D))%R = Feeval' lp:L (@FEmul Z lp:D' lp:Gcd) := _ in _}}
-  G GL)
-.
 }}.
 
 
@@ -113,19 +104,6 @@ Elpi Accumulate Plugin "ext.elpi".
 Elpi Accumulate lp:{{
 
 }}.
-Goal True.
-gcd_for_field (PX (Pc ((- 1)%Z)) 2%positive (Pc 1%Z))  (PX (Pc (1%Z)) 1%positive (Pc 1%Z)).
-easy.
-Qed.
-
-Ltac simplify_by_gcd n d :=
- unshelve foo1 n d; cbv [Peeval' PEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try ring.
-
-Goal True. 
- simplify_by_gcd (PI^5 + 4* PI^3 + 5* PI^2 +3* PI + 15)%R (PI^4 - PI ^3 + 2 *PI^2 - 3 * PI -3)%R; cbv [Feeval' FEeval BinList.nth BinNat.N.to_nat List.hd PosDef.Pos.to_nat PosDef.Pos.iter_op Init.Nat.add]; try field.
-
-easy.
-Qed.
 Notation "x + y" := (@PEadd Z x y).
 Notation "x - y" := (@PEsub Z x y).
 Notation "x * y" := (@PEmul Z x y).
@@ -172,7 +150,3 @@ Elpi Query lp:{{
   collect_glob_lcm_poly (add Nx Dx) 1 LCM
 
 }}.
-Goal True.
-gcd_for_field (PX (Pc 2%Z) 2 (Pc 0%Z)) (PX (Pc 1%Z) 1 (Pc 0%Z)).
-easy.
-Qed.

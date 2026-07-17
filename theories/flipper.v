@@ -24,7 +24,6 @@ solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
   coq.reduction.vm.norm {{norm lp:D'}} {{Pol Z}} D'',
   coq.reduction.vm.norm {{norm lp:Gcd}} {{Pol Z}} Gcd',
   (refine {{pair lp:LCM (pair lp:N'' (pair lp:D'' lp:Gcd'))}} G GL).
-
 }}.
 
 (* TODO: find how to reduce Pphi_pow without reducing IZR. *)
@@ -33,4 +32,3 @@ Ltac reduce_Pphi_pow :=
         mkmult_c_pos get_signZ Pos.eqb mkmult_rec List.rev' add_pow_list
         mkmult1 List.rev_append List.hd BinNat.N.add
         add_mult_dev mkadd_mult mkmult_c_pos mkmult_rec BinNat.N.to_nat PosDef.Pos.to_nat PosDef.Pos.iter_op List.rev' List.rev_append  List.hd List.tl add_pow_list mkmult_rec Pos.add Nat.add].
-

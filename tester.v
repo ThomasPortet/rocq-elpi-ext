@@ -8,7 +8,6 @@ Definition RField_lemma5 :=
   (@f_equal _ _ Rinv) (F2AF (Eqsth R) (Eq_ext _ _ _) Rfield) R_rm R_power_theory
   get_signZ_th (Ztriv_div_th Rset IZR).
   
-
 Definition Pmul := Pmul 0%Z 1%Z Z.add Z.mul Z.eqb.
 
 (* Term is the expression that was given by the user for simplification.
@@ -21,64 +20,6 @@ Definition Pmul := Pmul 0%Z 1%Z Z.add Z.mul Z.eqb.
   forall nfe, Fnorm FV fe = nfe ->  <some conditions> ->
     FEeval _ .. _ fe -> Pphi_pow N / Pphi_pow D
   where FEeval _ .. _ fe is convertible with Term.  *)
-Ltac find_fraction Term FV D N :=
-  let hyp := fresh "rewrite_lemma" in
-  intros hyp;
-  let D1 := eval vm_compute in D in
-  let N1 := eval vm_compute in N in
-  let hyp_aux := fresh "gcd_cond_proof" in
-  let fact_n0 := fresh "factor_not_0" in
-  let num_eq := fresh "equality_for_numerator" in
-  let den_eq := fresh "equality_for_denumerator" in
-  let res :=
-    constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) ltac_term:(D1))) in
-  let F := eval cbv [fst] in (fst res) in
-  let N2 := eval cbv [fst snd] in (fst (snd res)) in
-  let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
-  let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
-  assert (fact_n0 : IZR F <> 0) by (apply eq_IZR_contrapositive; easy);
-  enough (gcd_cond 0 1 Rplus Rmult Rminus Ropp eq 0%Z 1%Z Z.eqb IZR
-    BinNat.N.to_nat
-  pow get_signZ FV D D2 N N2 Gcd /\ (Peq Z.eqb (Pmul (Pc F) N) (Pmul N2 Gcd) = true
-    /\
-    Peq Z.eqb (Pmul (Pc F) D) (Pmul D2 Gcd) = true)) as [hyp_aux [num_eq den_eq]];
-    [let hyp2 := fresh "rewrite_lemma2" in
-    (assert (hyp2 := hyp F N2 D2 Gcd hyp_aux fact_n0 num_eq den_eq)
-      || idtac "assert failed");
-    clear hyp_aux hyp fact_n0 num_eq den_eq;
-    match type of hyp2 with
-    | _ -> ?t = _ =>
-      change t with Term in hyp2;
-      (rewrite hyp2; clear hyp2);
-      [ unfold display_pow_linear; reduce_Pphi_pow|
-        cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
-            List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op]]
-    end
-    |clear hyp fact_n0;
-    (split;[ unfold gcd_cond; reduce_Pphi_pow
-    | easy || fail 1000 "the oracle returned wrong polynomials"])
-      || fail 1000 "failed to prove other goal"
-  ].
-
-
-Definition Nnorm :=
-  norm_subst (0%Z) (1%Z) Z.add Z.mul Z.sub Z.opp Z.eqb Z.div_eucl.
-
-Ltac fs5 := Field_simplify_gcd Nnorm RField_lemma5 ltac:(find_fraction).
-
-Lemma happy_life : PI / (PI ^ 2 + PI ^ 2) = 4 / (8 * PI).
-Proof.
-field.
-enough (PI > 0) by nra.
-apply PI_RGT_0.
-Qed.
-
-Lemma field_unhappy : 1 + exp (PI / (PI ^ 2 + PI ^ 2)) =
-  exp (4 / (8 * PI)) + 1.
-Proof.
-Fail field.
-Abort.
-
 Ltac find_fraction Term FV D N :=
   let hyp := fresh "rewrite_lemma" in
   intros hyp;
@@ -118,39 +59,23 @@ Ltac find_fraction Term FV D N :=
           |   easy]
   ].
 
+Lemma happy_life : PI / (PI ^ 2 + PI ^ 2) = 4 / (8 * PI).
+Proof.
+field.
+enough (PI > 0) by nra.
+apply PI_RGT_0.
+Qed.
+
+Lemma field_unhappy : 1 + exp (PI / (PI ^ 2 + PI ^ 2)) =
+  exp (4 / (8 * PI)) + 1.
+Proof.
+Fail field.
+Abort.
+
 Definition Nnorm :=
   norm_subst (0%Z) (1%Z) Z.add Z.mul Z.sub Z.opp Z.eqb Z.div_eucl.
 
 Ltac fs5 := Field_simplify_gcd Nnorm RField_lemma5 ltac:(find_fraction).
-
-Lemma toto : PI / (PI ^ 2 + PI ^ 2) = exp 1 / (exp 1 + exp 1).
-
-field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2))  ( exp 1 / (exp 1 + exp 1)).
-
-
-Admitted.
- Lemma toto3 x : (3*x + 6 )/3 = x+2.
- field_simplify_gcd fs5  / ((3*x + 6 )/3).
-easy.
-easy.
-Admitted.
-
-Lemma toto1 : (PI^5 + 4* PI^3 + 5* PI^2 +3* PI + 15) /(PI^4 - PI ^3 + 2 *PI^2 - 3 * PI -3) = (PI ^ 3 + PI + 5) / (PI ^ 2 - PI - 1).
-field_simplify_gcd fs5 /((PI^5 + 4* PI^3 + 5* PI^2 +3* PI + 15) /(PI^4 - PI ^3 + 2 *PI^2 - 3 * PI -3)).
-Lemma toto4 x :(x + 2) /(3/3) = x + 2.
- field_simplify_gcd fs5  / ((x + 2) /(3/3)).
- easy.
-Admitted.
-
-Lemma toto5 x : (3*x*x + 6 *x)/ (3 *x) = x +2.
- field_simplify_gcd fs5  / ((3*x*x + 6 *x)/ (3 *x)).
- easy.
-Admitted.
-Lemma ring_happy : 1 + exp (PI ^ 2 - 1) = exp ((PI + 1) * (PI - 1)) + 1.
-Proof.
-ring_simplify (PI ^ 2 - 1) ((PI + 1) * (PI - 1)).
-ring.
-Qed.
 
 Lemma field_still_unhappy :
   exp (PI / (PI ^ 2 + PI ^ 2)) = exp (4 / (8 * PI)).

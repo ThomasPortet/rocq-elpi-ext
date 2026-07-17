@@ -21,21 +21,21 @@ z_decode N {{Zneg lp:P}} :-  N1 is 0 - N, pos_decode N1 P.
 
 func fe_encode term -> polyT.
 
-fe_encode {{FEO}} (num (rat 0 1)).
-fe_encode {{FEI}} (num (rat 1 1)).
-fe_encode {{@FEc Z lp:C }} (num (rat C1 1)) :-
+fe_encode {{FEO}} (pcst (rat 0 1)).
+fe_encode {{FEI}} (pcst (rat 1 1)).
+fe_encode {{@FEc Z lp:C }} (pcst (rat C1 1)) :-
   z_encode C C1.
 fe_encode {{@FEX Z lp:X}} (var Y) :-
  pos_encode X Y.
 fe_encode {{@FEadd Z lp:X1 lp:X2}} (add P1 P2) :-
   fe_encode X1 P1, fe_encode X2 P2.
-fe_encode {{FEsub lp:X1 lp:X2}} (add P1 (mul (num (rat (-1) 1)) P2)) :-
+fe_encode {{FEsub lp:X1 lp:X2}} (add P1 (mul (pcst (rat (-1) 1)) P2)) :-
   fe_encode X1 P1, fe_encode X2 P2.
 fe_encode {{FEmul lp:X1 lp:X2}} (mul P1 P2) :-
   fe_encode X1 P1, fe_encode X2 P2.
-fe_encode {{FEopp lp:X}} (mul (num (rat (-1) 1)) P) :-
+fe_encode {{FEopp lp:X}} (mul (pcst (rat (-1) 1)) P) :-
   fe_encode X P.
-fe_encode {{FEpow _ 0}} (num (rat 1 1)).
+fe_encode {{FEpow _ 0}} (pcst (rat 1 1)).
 fe_encode {{FEpow lp:X (Npos 1)}} Y :-
   fe_encode X Y.
 fe_encode {{FEpow lp:X (Npos (xO lp:N))}} (mul Y Y) :-
@@ -47,7 +47,7 @@ fe_encode {{FEpow lp:X (Npos (xI lp:N))}} (mul (mul Y Y) Z) :-
 
 func p_inj int, polyT -> polyT.
 p_inj 0 P P :- !.
-p_inj N (num R) (num R) :- N > 0, !.
+p_inj N (pcst R) (pcst R) :- N > 0, !.
 p_inj N (var V) (var V') :- N > 0, !, V' is V + N.
 p_inj N (add P Q) (add P' Q') :- N > 0, !, 
   p_inj N P P', 
@@ -57,7 +57,7 @@ p_inj N (mul P Q) (mul P' Q') :- N > 0, !,
   p_inj N Q Q'.
 
 func pow_x int -> polyT.
-pow_x 0 (num (rat 1 1)) :- !.
+pow_x 0 (pcst (rat 1 1)) :- !.
 pow_x N (var 1) :- N = 1, !.
 pow_x N (mul X Y) :- N > 1, !, 
   N1 is N - 1, 
@@ -65,7 +65,7 @@ pow_x N (mul X Y) :- N > 1, !,
   X = (var 1).
 
 func pol_encode term -> polyT.
-pol_encode {{Pc lp:C}} (num (rat C1 1)) :- !,
+pol_encode {{Pc lp:C}} (pcst (rat C1 1)) :- !,
   z_encode C C1.
 
 pol_encode {{Pinj lp:J lp:Q}} P' :- !,
@@ -83,26 +83,26 @@ pol_encode {{PX lp:P lp:I lp:Q}} (add PXpart Qpart) :- !,
    
 
 func fe_decode polyT -> term.
-fe_decode (num (rat 0 _)) {{FEO}} :- !.
-fe_decode (num (rat 1 1)) {{FEI}} :- !.
-fe_decode (num (rat Num 1)) {{@FEc Z lp:Num1 }} :- !,
+fe_decode (pcst (rat 0 _)) {{FEO}} :- !.
+fe_decode (pcst (rat 1 1)) {{FEI}} :- !.
+fe_decode (pcst (rat Num 1)) {{@FEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
-fe_decode (num (rat Num Denom)) {{FEdiv (FEc lp:ZNum) (FEc lp:ZDenom)}} :- !,
+fe_decode (pcst (rat Num Denom)) {{FEdiv (FEc lp:ZNum) (FEc lp:ZDenom)}} :- !,
   z_decode Num ZNum,
   z_decode Denom ZDenom.
 fe_decode (var Y) {{@FEX Z lp:X}} :- !,
  pos_decode Y X.
-fe_decode (add P1 (mul (num (rat (-1) 1)) P2)) {{FEsub lp:X1 lp:X2}} :- !,
+fe_decode (add P1 (mul (pcst (rat (-1) 1)) P2)) {{FEsub lp:X1 lp:X2}} :- !,
   fe_decode P1 X1, fe_decode P2 X2.
 fe_decode (add P1 P2) {{@FEadd Z lp:X1 lp:X2}} :- !,
   fe_decode P1 X1, fe_decode P2 X2 .
-fe_decode (mul (num (rat 1 1)) X) Y :- !,
+fe_decode (mul (pcst (rat 1 1)) X) Y :- !,
   fe_decode X Y.
-fe_decode (mul X (num (rat 1 1))) Y :- !,
+fe_decode (mul X (pcst (rat 1 1))) Y :- !,
   fe_decode X Y.
-fe_decode (mul X (num (rat (-1) 1))) {{FEopp lp:Y}} :- !,
+fe_decode (mul X (pcst (rat (-1) 1))) {{FEopp lp:Y}} :- !,
   fe_decode X Y.
-fe_decode (mul (num (rat (-1) 1)) P) {{FEopp lp:X}} :- !,
+fe_decode (mul (pcst (rat (-1) 1)) P) {{FEopp lp:X}} :- !,
   fe_decode P X.
 fe_decode (mul (mul Y Y) Z) {{FEpow lp:X (Npos (xI lp:N))}} :- 
   fe_decode Z X,
@@ -139,9 +139,9 @@ fe_to_reals {{@FEpow Z lp:X (Npos 1)}} _ Y :-
   fe_to_reals X [] Y.
 
 func pe_decode polyT -> term.
-pe_decode (num (rat 0 _)) {{PEO}} :- !.
-pe_decode (num (rat N N)) {{PEI}} :- !.
-pe_decode (num (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
+pe_decode (pcst (rat 0 _)) {{PEO}} :- !.
+pe_decode (pcst (rat N N)) {{PEI}} :- !.
+pe_decode (pcst (rat Num 1)) {{@PEc Z lp:Num1 }} :- !,
   z_decode Num Num1.
 pe_decode (var Y) {{@PEX Z lp:X}} :- !,
  pos_decode Y X.
@@ -149,17 +149,17 @@ pe_decode (add P1 P2) X1 :-
    pe_decode P2 {{PEO}}, !, pe_decode P1 X1.
 pe_decode (add P1 P2) X2 :-
   pe_decode P1 {{PEO}}, !, pe_decode P2 X2.
-pe_decode (add P1 (mul (num (rat (-1) 1)) P2)) {{PEsub lp:X1 lp:X2}} :- !,
+pe_decode (add P1 (mul (pcst (rat (-1) 1)) P2)) {{PEsub lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2.
 pe_decode (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
   pe_decode P1 X1, pe_decode P2 X2 .
-pe_decode (mul (num (rat 1 1)) X) Y :- !,
+pe_decode (mul (pcst (rat 1 1)) X) Y :- !,
   pe_decode X Y.
-pe_decode (mul X (num (rat 1 1))) Y :- !,
+pe_decode (mul X (pcst (rat 1 1))) Y :- !,
   pe_decode X Y.
-pe_decode (mul X (num (rat (-1) 1))) {{PEopp lp:Y}} :- !,
+pe_decode (mul X (pcst (rat (-1) 1))) {{PEopp lp:Y}} :- !,
   pe_decode X Y.
-pe_decode (mul (num (rat (-1) 1)) X) {{PEopp lp:Y}} :- !,
+pe_decode (mul (pcst (rat (-1) 1)) X) {{PEopp lp:Y}} :- !,
   pe_decode X Y.
 pe_decode (mul X Y) {{@PEpow Z lp:Z (Npos lp:N1)}}:-
   pe_decode Y {{@PEpow Z lp:Z (Npos lp:N)}},
@@ -211,10 +211,10 @@ collect_glob_lcm {{@FEc Z lp:C}} L LCM :-
 collect_glob_lcm _ L L.
 
 func collect_glob_lcm_poly polyT, int -> int.
-collect_glob_lcm_poly (num (rat 0 _)) I I :- !.
-collect_glob_lcm_poly (num (rat N N)) I I :- !.
-collect_glob_lcm_poly (num (rat _ 1)) I I :- !.
-collect_glob_lcm_poly (num (rat _ I)) L LCM :- !,
+collect_glob_lcm_poly (pcst (rat 0 _)) I I :- !.
+collect_glob_lcm_poly (pcst (rat N N)) I I :- !.
+collect_glob_lcm_poly (pcst (rat _ 1)) I I :- !.
+collect_glob_lcm_poly (pcst (rat _ I)) L LCM :- !,
   lcm_int I L LCM.
 collect_glob_lcm_poly (mul P1 P2) L LCM :- !,
   collect_glob_lcm_poly P1 L L', collect_glob_lcm_poly P2 L' LCM.
@@ -223,12 +223,12 @@ collect_glob_lcm_poly (add P1 P2) L LCM :- !,
 collect_glob_lcm_poly _ L L.
 
 func multiply_lcm_poly polyT, int -> polyT.
-multiply_lcm_poly (num (rat 0 _)) _ (num (rat 0 1)) :- !.
-multiply_lcm_poly (num (rat N N)) L (num (rat L 1)) :- !.
-multiply_lcm_poly (num (rat Num 1)) L (num (rat Num' 1))  :- !,
+multiply_lcm_poly (pcst (rat 0 _)) _ (pcst (rat 0 1)) :- !.
+multiply_lcm_poly (pcst (rat N N)) L (pcst (rat L 1)) :- !.
+multiply_lcm_poly (pcst (rat Num 1)) L (pcst (rat Num' 1))  :- !,
   Num' is Num * L.
 
-multiply_lcm_poly (num (rat Num Denom)) L (num (rat N' 1)) :- !,
+multiply_lcm_poly (pcst (rat Num Denom)) L (pcst (rat N' 1)) :- !,
   M is L div Denom,
   N' is Num * M.
 

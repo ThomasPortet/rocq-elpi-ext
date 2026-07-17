@@ -1,6 +1,10 @@
 module API = Elpi.API
 
-let rat_ = API.AlgebraicData.declare {
+open Gcd
+open API
+open ContextualConversion
+
+let rat_ = AlgebraicData.declare {
   ty = TyName "ratT";
   doc = "a type of rational numbers viewed as pairs of int values";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
@@ -9,7 +13,7 @@ let rat_ = API.AlgebraicData.declare {
       A(BuiltInData.int,A (BuiltInData.int, N)),
       B (fun n d -> { num = n; den = d }),
       M (fun ~ok ~ko t -> match t with { num = n; den = d } -> ok n d ))]
-} |> ContextualConversion.(!<)
+} |> (!<)
 
 let poly_ = API.AlgebraicData.declare {
   ty = TyName "polyT";
@@ -17,7 +21,7 @@ let poly_ = API.AlgebraicData.declare {
         " variables, addition, and multiplication";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
   constructors = [
-    K("num","numeric constant", A(rat_, N),
+    K("pcst","constant polynomial", A(rat_, N),
       B (fun n -> Const n),
       M (fun ~ok ~ko t -> match t with Const r -> ok r | _ -> ko ()));
     K("var","indexed variable",A (BuiltInData.int, N),
@@ -30,7 +34,7 @@ let poly_ = API.AlgebraicData.declare {
       B (fun x y -> Mul (x, y)),
       M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ())); 
       ]
-} |> ContextualConversion.(!<)
+} |> API.ContextualConversion.(!<)
 
 let gcd_poly_api = API.BuiltIn.MLCode(Pred ("gcd_poly",
     In(poly_, "poly1",

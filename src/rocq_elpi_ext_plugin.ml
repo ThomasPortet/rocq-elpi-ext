@@ -1,96 +1,59 @@
-open Gcd
 module API = Elpi.API
-module E = API.RawData
 
-let declare = let open API.AlgebraicData in declare
+open Gcd
+open API
+open ContextualConversion
 
-
-
-type mysumT = | MyC : int -> mysumT | MyA : (mysumT * mysumT) -> mysumT
-
-let rec compute (s : mysumT) = match s with
-  | MyC n -> n
-  | MyA (s1, s2) -> compute s1 + compute s2
-
-let myC = E.Constants.declare_global_symbol "myC"
-let myA = E.Constants.declare_global_symbol "myA"
-
-let gRat = E.Constants.declare_global_symbol "rat"
-let gConst = E.Constants.declare_global_symbol "gconst"
-let gVar = E.Constants.declare_global_symbol "var"
-let gAdd = E.Constants.declare_global_symbol "add"
-let gMul = E.Constants.declare_global_symbol "mul"
-
-let embed_rat = function
-  | { num = n; den = d } -> E.mkApp gRat (API.RawOpaqueData.of_int n) [API.RawOpaqueData.of_int d]
-
-
-let rat_ = API.(AlgebraicData.declare {
+let rat_ = AlgebraicData.declare {
   ty = TyName "ratT";
-  doc = "blibli";
+  doc = "a type of rational numbers viewed as pairs of int values";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
   constructors = [
-    K("rat","",A(BuiltInData.int,A (BuiltInData.int, N)),
+    K("rat","numerator then denumerator",
+      A(BuiltInData.int,A (BuiltInData.int, N)),
       B (fun n d -> { num = n; den = d }),
       M (fun ~ok ~ko t -> match t with { num = n; den = d } -> ok n d ))]
-} |> ContextualConversion.(!<))
+} |> (!<)
 
-let compute_rat_api = API.BuiltIn.MLCode(Pred("compute",
-    In(rat_, "rat",
-    Out(rat_, "rat",
-    Easy("AAA"))),
-    fun a _ ~depth -> (), Some ( {num = 2*a.num; den = a.den})),
-    DocAbove)
-
-let poly_ = API.(AlgebraicData.declare {
+let poly_ = AlgebraicData.declare {
   ty = TyName "polyT";
-  doc = "blibli";
+  doc = "A type of ring expressions, simply with numeric constants," ^
+        " variables, addition, and multiplication";
   pp = (fun fmt _ -> Format.fprintf fmt "<todo>");
   constructors = [
-    K("gconst","",A(rat_, N),
+    K("pcst","constant polynomial", A(rat_, N),
       B (fun n -> Const n),
       M (fun ~ok ~ko t -> match t with Const r -> ok r | _ -> ko ()));
-    K("var","",A (BuiltInData.int, N),
+    K("var","indexed variable",A (BuiltInData.int, N),
       B (fun n -> Var n),
       M (fun ~ok ~ko t -> match t with Var n -> ok n | _ -> ko ()));
-    K("add","",S(S(N)),
+    K("add","binary addition",S(S(N)),
       B (fun x y -> Add (x, y)),
       M (fun ~ok ~ko t -> match t with Add (x,y) -> ok x y | _ -> ko ()));
-    K("mul","",S(S(N)),
+    K("mul","binary multiplication",S(S(N)),
       B (fun x y -> Mul (x, y)),
-      M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ())); 
+      M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ()));
       ]
-} |> ContextualConversion.(!<))
+} |> (!<)
 
 
-let compute_poly_api = API.BuiltIn.MLCode(Pred("compute_poly",
-    In(poly_, "poly",
-    Out(poly_, "poly",
-    Easy("AAA"))),
-    fun a _ ~depth -> (), Some ( a)),
-    DocAbove)
-let gcd_poly_api = API.BuiltIn.MLCode(Pred ("gcd_poly",
-    In(poly_, "poly1",
-    In(poly_, "poly2",
-    Out(poly_, "gcd",
-    Easy("AAA")))),
-    fun a (b : poly) _ ~depth -> (), Some ( poly_gcd a b)),
-    DocAbove)
-let factorize_poly_api = API.BuiltIn.MLCode(Pred ("factorize_poly",
-    In(poly_, "poly1",
-    In(poly_, "poly2",
-    Out(poly_, "poly1",
-    Out(poly_, "poly2",
-    Easy("AAA"))))),
-    fun (a:poly) (b : poly) _ _ ~depth -> ((), Some(fst (factorize a b))), Some (snd (factorize a b))),
+open BuiltInPredicate.Notation
+
+let gcd_poly_api =
+    let ty = poly_ in
+    BuiltIn.MLCode(Pred ("gcd_poly",
+    In(ty, "p1", In(ty, "p2",
+    Out(ty, "gcd",Out (ty, "p1_div",Out (ty, "p2_div",
+    Easy("gcd is the greatest common divisor of polynomials p1 and p2," ^
+         " p1_div is p1/gcd, p2_div is p2/gcd")))))),
+    fun a b _ _ _ ~depth ->
+      (match Gcd.poly_gcd a b with
+        (v1, v2, v3) -> !: v1 +! v2 +! v3)),
     DocAbove)
 
 let builtins =
   API.BuiltIn.declare ~file_name:"ext.elpi" [
   MLData rat_;
   MLData poly_;
-  compute_rat_api;
-  compute_poly_api;
   gcd_poly_api;
-  factorize_poly_api
 ]

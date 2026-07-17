@@ -78,7 +78,7 @@ Proof.
 Fail field.
 Abort.
 
-Lemma ring_happy : 1+ exp (PI ^ 2 - 1) = exp ((PI + 1) * (PI - 1)) + 1.
+Lemma ring_happy : 1 + exp (PI ^ 2 - 1) = exp ((PI + 1) * (PI - 1)) + 1.
 Proof.
 ring_simplify (PI ^ 2 - 1) ((PI + 1) * (PI - 1)).
 ring.
@@ -102,4 +102,11 @@ nra.
 nra.
 nra.
 nra.
+Qed.
+
+Lemma field_simplify_sandbox : cos (PI / 2) = cos (2 * (PI / 4)).
+Proof.
+field_simplify (2 * (PI / 4)).
+field_simplify_gcd fs5 / (2 * PI / 4);[ | nra ..].
+easy.
 Qed.

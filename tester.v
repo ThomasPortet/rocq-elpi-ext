@@ -93,8 +93,6 @@ field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)) (4 / (8 * PI)).
 easy.
 nra.
 nra.
-nra.
-nra.
 Qed.
 
 Lemma field_simplify_sandbox : cos (PI / 2) = cos (2 * (PI / 4)).

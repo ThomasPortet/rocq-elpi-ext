@@ -9,6 +9,7 @@ Definition RField_lemma5 :=
   get_signZ_th (Ztriv_div_th Rset IZR).
   
 Definition Pmul := Pmul 0%Z 1%Z Z.add Z.mul Z.eqb.
+Local Notation "x ?== y" := (Peq Z.eqb x y) (at level 70, no associativity).
 
 (* Term is the expression that was given by the user for simplification.
   FV is the list of sub-expressions of Term that are not recognized as
@@ -36,9 +37,8 @@ Ltac find_fraction Term FV D N :=
   let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
   assert (fact_n0 : IZR F <> 0) by (apply eq_IZR_contrapositive; easy);
   enough
-  (Peq Z.eqb (Pmul (Pc F) N1) (Pmul N2 Gcd) = true
-    /\
-    Peq Z.eqb (Pmul (Pc F) D1) (Pmul D2 Gcd) = true) as [num_eq den_eq];
+  ((Pmul (Pc F) N1 ?== Pmul N2 Gcd) = true /\
+    (Pmul (Pc F) D1 ?== Pmul D2 Gcd) = true) as [num_eq den_eq];
     [generalize (hyp F N2 D2 Gcd fact_n0 num_eq den_eq);
           clear hyp fact_n0 num_eq den_eq;
           let hyp2 := fresh "rewrite_lemma2" in 
@@ -46,11 +46,15 @@ Ltac find_fraction Term FV D N :=
           let ty := type of hyp2 in
           lazymatch type of hyp2 with
           | _ -> ?t = ?r =>
-            change t with Term in hyp2;
-            (rewrite hyp2; clear hyp2);
-            [ unfold display_pow_linear; reduce_Pphi_pow|
-             cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
-            List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op BinList.jump List.tl]]
+            let hyp_concl := fresh "rewrite_lemma2"  in
+              enough (hyp_concl : t = r);
+                [change t with Term in hyp_concl;
+                 rewrite hyp_concl; clear hyp_concl hyp2;
+                 unfold display_pow_linear; reduce_Pphi_pow |
+                 apply hyp2; clear hyp2;
+                 cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
+                 List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op
+                 BinList.jump List.tl]]
           end
           |
           clear hyp fact_n0;
@@ -82,7 +86,11 @@ Lemma field_still_unhappy :
 Proof.
 assert (PI_GT0 := PI_RGT_0).
 field_simplify (PI / (PI ^ 2 + PI ^ 2)) (4 / (8 * PI)).
-Abort.
+Fail easy.
+  replace (PI/ (2 * PI ^ 2)) with (4 / (8 * PI)) by (field; nra).
+  easy.
+all: nra.
+Qed.
 
 Lemma field_solution :
   exp (PI / (PI ^ 2 + PI ^ 2)) = exp (4 / (8 * PI)).
@@ -91,8 +99,7 @@ assert (PI_GT0 := PI_RGT_0).
 Fail field.
 field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)) (4 / (8 * PI)).
 easy.
-nra.
-nra.
+all: nra.
 Qed.
 
 Lemma field_simplify_sandbox : cos (PI / 2) = cos (2 * (PI / 4)).

@@ -43,7 +43,6 @@ Ltac find_fraction Term FV D N :=
           clear hyp fact_n0 num_eq den_eq;
           let hyp2 := fresh "rewrite_lemma2" in 
           intros hyp2;
-          let ty := type of hyp2 in
           lazymatch type of hyp2 with
           | _ -> ?t = ?r =>
             change t with Term in hyp2;
@@ -56,8 +55,7 @@ Ltac find_fraction Term FV D N :=
           |
           clear hyp fact_n0;
           split; 
-           [ reduce_Pphi_pow; easy
-          |   easy]
+           [ reduce_Pphi_pow; easy |   easy]
   ].
 
 Lemma happy_life : PI / (PI ^ 2 + PI ^ 2) = 4 / (8 * PI).

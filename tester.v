@@ -46,15 +46,12 @@ Ltac find_fraction Term FV D N :=
           let ty := type of hyp2 in
           lazymatch type of hyp2 with
           | _ -> ?t = ?r =>
-            let hyp_concl := fresh "rewrite_lemma2"  in
-              enough (hyp_concl : t = r);
-                [change t with Term in hyp_concl;
-                 rewrite hyp_concl; clear hyp_concl hyp2;
-                 unfold display_pow_linear; reduce_Pphi_pow |
-                 apply hyp2; clear hyp2;
-                 cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
-                 List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op
-                 BinList.jump List.tl]]
+            change t with Term in hyp2;
+            (rewrite hyp2; clear hyp2);
+            [ unfold display_pow_linear; reduce_Pphi_pow|
+             cbv [fst snd PCond condition PEeval BinList.nth BinNat.N.to_nat
+            List.hd PosDef.Pos.to_nat Init.Nat.add PosDef.Pos.iter_op
+            BinList.jump List.tl]]
           end
           |
           clear hyp fact_n0;

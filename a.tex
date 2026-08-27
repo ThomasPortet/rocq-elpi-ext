@@ -1,0 +1,236 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\geometry{margin=1in}
+\setlist[itemize]{leftmargin=*}
+\lstset{basicstyle=\small\ttfamily, columns=fullflexible, keepspaces=true,
+  frame=single, breaklines=true, backgroundcolor=\color{gray!7}}
+
+\title{Improving the Tactics \texttt{ring} and \texttt{field}\\
+ }
+\author{Thomas Portet}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document presents an extension of Rocq's reflexive algebraic tactics. The
+goal is to make \texttt{ring} and \texttt{field} useful for expressions that
+contain functions outside the ring or field fragment. The solution normalizes
+function arguments, computes polynomial greatest common divisors with an OCaml
+oracle, and connects the computation to Rocq through ELPI foreign calls.
+\end{abstract}
+\section{LiberAbaci and the motivation}
+LiberAbaci uses Rocq for early mathematics education. Its goals are:
+\begin{itemize}[leftmargin=*]
+    \item choose a simple ambient theory and number type;
+    \item import theorems from other theories, possibly with Trocq;
+    \item support declarative proofs with \texttt{assert}, \texttt{enough}, and
+      a Lean-inspired \texttt{calc};
+    \item use simple tactics instead of long rewrite scripts.
+\end{itemize}
+The intended supporting tactics include \texttt{ring}, \texttt{field}, and
+\texttt{nra}. Recent related work by A. Dehorey also informs this direction.
+
+\section{Where reflexive tactics are insufficient}
+Consider
+\[
+  \frac{\pi}{\pi^2+\pi^2}=\frac{1}{2\pi}.
+\]
+\texttt{field} can solve this if it proves $\pi^2+\pi^2\ne0$ and $\pi\ne0$.
+Now consider
+\[
+  e\!\left(\frac{\pi}{\pi^2+\pi^2}\right)
+  = e\!\left(\frac{1}{2\pi}\right).
+\]
+Here \texttt{field} fails because $x\mapsto e^x$ is not a field expression.
+The same issue affects \texttt{ring}:
+\[
+  \pi^2+\pi\mathbin{\times}\pi=2\pi^2
+\]
+is easy for \texttt{ring}, but
+\[
+  \ln(\pi^2+\pi\mathbin{\times}\pi)=\ln(2\pi^2)
+\]
+has two different arguments from the tactic's point of view.
+
+\section{How \texttt{ring} works}
+\texttt{ring} works with integer constants, multiplication, addition,
+subtraction, and variables. Other expressions are treated as variables:
+\begin{enumerate}
+  \item reify a formula into the formal polynomial language;
+  \item normalize the resulting polynomial expressions;
+  \item conclude when the normalized expressions are equal.
+\end{enumerate}
+For example, replace $\pi$ by $X$:
+\[
+  \pi(\pi\times1)+\pi\times\pi
+  \quad\longmapsto\quad X(X\times1)+X\times X
+\]
+This normalizes to $2X^2$ without knowing anything about $\pi$. But
+\[
+  \ln(\pi(\pi\times1)+\pi\times\pi),\qquad \ln(2\pi^2)
+\]
+become two different variables. The tactic cannot see that their arguments are
+equal.
+
+\section{Deep ring simplification}
+The solution repeatedly simplifies function arguments. It collects the
+subexpressions, applies ring simplification, and repeats until nothing changes.
+It then finishes by reflexivity.
+
+For
+\[
+ \cos(x+\cos(x+x))
+ =\cos(\cos(2x)+(1-(1-x))),
+\]
+The relevant subexpressions include $x+\cos(x+x)$, $x+x$,
+$\cos(2x)+(1-(1-x))$, and $2x$. Simplification turns $x+x$ into $2x$ and
+$\cos(2x)+(1-(1-x))$ into $x+\cos(2x)$. The equality becomes
+\[
+  \cos(x+\cos(2x))=\cos(x+\cos(2x)).
+\]
+
+\section{Field normal forms and the remaining problem}
+Both tactics produce normal forms and compare them. For rings, the normal form
+is a polynomial. For fields, it is a fraction, with
+\[
+  \frac{p}{q}=\frac{r}{s}
+  \quad\Longleftrightarrow\quad
+  p\times s=q\times r\quad\land\quad q\ne0\quad\land\quad s\ne0.
+\]
+The fractions $2\pi/4$ and $\pi/2$ are equal, but field simplification may
+not produce the same fraction. Thus $\cos(2\pi/4)$ is not changed to
+$\cos(\pi/2)$. We need a version that reduces fractions with a polynomial gcd.
+
+\section{The gcd oracle}
+The field-simplification theorem has the following shape:
+\[
+ \operatorname{Fnorm}(l,e)=r \Longrightarrow
+ \operatorname{FEeval}(l,e)=
+ \frac{P\!\phi(l,\operatorname{norm}(\operatorname{num}(r)))}
+      {P\!\phi(l,\operatorname{norm}(\operatorname{den}(r)))}.
+\]
+The extension adds a non-zero integer $m$ and polynomials $\nu$, $\delta$, and
+$\gamma$ such that
+\[
+ m\ne0,\qquad m\,\operatorname{num}(r)=\nu\gamma,
+ \qquad m\,\operatorname{den}(r)=\delta\gamma.
+\]
+The new theorem uses the reduced numerator and denominator:
+\[
+ \operatorname{FEeval}(l,e)=
+ \frac{P\!\phi(l,\operatorname{norm}(\nu))}
+      {P\!\phi(l,\operatorname{norm}(\delta))}.
+\]
+The oracle supplies these four values. Rocq proves the remaining conditions.
+
+\section{Two polynomial representations}
+Rocq uses \texttt{PExpr} and \texttt{Pol}. The function \texttt{norm} converts
+\texttt{PExpr} to the sparse Horner form \texttt{Pol}. ELPI uses \texttt{polyT}.
+The bridge converts between these representations.
+
+\section{ELPI as the bridge}
+ELPI is a Prolog-like language for term manipulation. Its foreign-function
+interface connects Rocq to OCaml. The OCaml polynomial type is:
+\begin{lstlisting}[language=ML]
+type poly =
+  Const of int
+| Var of int
+| Add of poly * poly
+| Mul of poly * poly
+\end{lstlisting}
+
+The plugin exposes \texttt{polyT} with constructors \texttt{pcst},
+\texttt{var}, \texttt{add}, and \texttt{mul}:
+\begin{lstlisting}[language=ML]
+K("add", "binary addition", S(S(N)),
+  B (fun x y -> Add (x, y)),
+  M (fun ~ok ~ko t ->
+    match t with Add (x, y) -> ok x y | _ -> ko ()))
+\end{lstlisting}
+Here \texttt{S} describes a recursive value. \texttt{ko} handles a mismatch.
+
+\section{Encoding and foreign calls}
+The decoder builds a \texttt{PExpr} term and asks Rocq's VM for its
+\texttt{Pol} form:
+\begin{lstlisting}
+func pol_decode polyT -> term.
+pol_decode PolyT_a Result :-
+  pe_decode_naive PolyT_a Pe_a,
+  coq.reduction.vm.norm {{norm lp:Pe_a}} {{Pol Z}} Result.
+\end{lstlisting}
+OCaml provides
+\[
+  \texttt{Gcd.poly\_gcd : poly -> poly -> (int * poly * poly * poly)}.
+\]
+This becomes an ELPI predicate with two inputs and four outputs:
+\begin{lstlisting}
+kind polyT type.
+external symbol pcst : int -> polyT.
+external symbol var  : int -> polyT.
+external symbol add  : polyT -> polyT -> polyT.
+external symbol mul  : polyT -> polyT -> polyT.
+external func gcd_poly polyT, polyT -> int, polyT, polyT, polyT.
+\end{lstlisting}
+The wrapper encodes the inputs, calls the function, and decodes the results:
+\begin{lstlisting}
+func gcd_and_factors term, term -> term, term, term, term.
+gcd_and_factors N D Ne De Gcd MZ :-
+  pol_encode N Nx, pol_encode D Dx,
+  gcd_poly Nx Dx M G N' D',
+  pol_decode N' Ne, pol_decode D' De,
+  pol_decode G Gcd, z_decode M MZ.
+\end{lstlisting}
+
+\section{Making it a tactic}
+The extension provides an ELPI tactic. It computes the factors, normalizes the
+results in Rocq, and returns the least common multiple, reduced numerator,
+reduced denominator, and gcd:
+\begin{lstlisting}
+Elpi Tactic factorize_by_gcd.
+Elpi Accumulate Plugin "ext.elpi".
+Elpi Accumulate File encode.
+Elpi Accumulate lp:{{
+  solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
+    gcd_and_factors N D N' D' Gcd LCM,
+    coq.reduction.vm.norm {{norm lp:N'}} {{Pol Z}} N'',
+    coq.reduction.vm.norm {{norm lp:D'}} {{Pol Z}} D'',
+    refine {{pair lp:LCM (pair lp:N'' (pair lp:D'' lp:Gcd'))}} G GL.
+}}.
+\end{lstlisting}
+
+\section{Integrating with \texttt{field}}
+The workaround is a parameterizable tactic with three parameters: a
+normalization function, a justification theorem, and a finishing tactic.
+Existing field code computes unknowns, applies a lemma, and rewrites. The
+extension collects the numerator and denominator, calls the gcd computation,
+and rewrites with the results. Modified pieces include versions of
+\texttt{Field simplify gcd}, \texttt{Field norm gen},
+\texttt{ReflexiveRewriteTactic}, and \texttt{ApplyLemmaThenAndCont}.
+
+\section{Lessons learned}
+The experiment uses four languages: the calculus of constructions, Ltac, ELPI,
+and OCaml. Ltac remains central. Direct translation to OCaml is possible but
+heavy; ELPI is shorter and has access to type checking and conversion. The
+Ltac infrastructure is powerful but hard to read and debug. One bug came from
+a $0$ where the OCaml code needed a $1$.
+
+\section{Future work}
+Future work includes deep field simplification, careful staging, fewer
+generated conditions, exponents in deep ring and field, commutative-group
+isomorphisms, and better polynomial gcd computation with unbound integers.
+
+\section{Conclusion}
+Ring normalization can simplify expressions inside function arguments. An
+OCaml gcd oracle can reduce field fractions. ELPI connects the proof assistant,
+tactics, and external computation.
+
+\end{document}

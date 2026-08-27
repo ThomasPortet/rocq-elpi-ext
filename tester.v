@@ -55,7 +55,7 @@ Ltac find_fraction Term FV D N :=
           |
           clear hyp fact_n0;
           split; 
-           [ reduce_Pphi_pow; easy |   easy]
+           [ reduce_Pphi_pow; easy|   easy; try nra]
   ].
 
 Lemma happy_life : PI / (PI ^ 2 + PI ^ 2) = 4 / (8 * PI).
@@ -88,11 +88,11 @@ all: nra.
 Qed.
 
 Lemma field_solution :
-  exp (PI / (PI ^ 2 + PI ^ 2)) = exp (4 / (8 * PI)).
+  exp (PI / (PI ^ 2 + PI ^ 2)/(5/5)) = exp (4 / (8 * PI)).
 Proof.
 assert (PI_GT0 := PI_RGT_0).
 Fail field.
-field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)) (4 / (8 * PI)).
+field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)/(5/5)) (4 / (8 * PI)).
 easy.
 all: nra.
 Qed.

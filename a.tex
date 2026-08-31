@@ -108,7 +108,7 @@ is a polynomial. For fields, it is a fraction, with
 \]
 The fractions $2\pi/4$ and $\pi/2$ are equal, but field simplification may
 not produce the same fraction. Thus $\cos(2\pi/4)$ is not changed to
-$\cos(\pi/2)$. We need a version that reduces fractions with a polynomial gcd.
+$\cos(\pi/2)$. We used $ring\_simplify$ and it behaved as we wanted ; but when we used $field\_simplify$ we faced problems that easy simplifications couldn't be solved because it does not reduce fractions to their simplest form. We need a version that reduces fractions with a polynomial gcd.
 
 \section{The gcd oracle}
 The field-simplification theorem has the following shape:
@@ -147,6 +147,10 @@ type poly =
 | Add of poly * poly
 | Mul of poly * poly
 \end{lstlisting}
+This is the internal representation used after reification: each polynomial is a
+finite expression built from integer constants, indexed variables, addition,
+and multiplication. It is intentionally simple, because the gcd and reduction
+algorithms only need the ring structure and not the original surface syntax.
 
 The plugin exposes \texttt{polyT} with constructors \texttt{pcst},
 \texttt{var}, \texttt{add}, and \texttt{mul}:
@@ -190,6 +194,25 @@ gcd_and_factors N D Ne De Gcd MZ :-
   pol_decode G Gcd, z_decode M MZ.
 \end{lstlisting}
 
+\section{Ltac calling ELPI}
+The proof script still lives in Ltac, but the actual computation is delegated to
+ELPI. The bridge is explicit: Ltac builds a Rocq term, calls the ELPI tactic,
+and receives back the reduced numerator, denominator, and gcd:
+\begin{lstlisting}
+let res :=
+  constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) ltac_term:(D1))) in
+let F := eval cbv [fst] in (fst res) in
+let N2 := eval cbv [fst snd] in (fst (snd res)) in
+let D2 := eval cbv [fst snd] in (fst (snd (snd res))) in
+let Gcd := eval cbv [snd fst] in (snd (snd (snd res))) in
+
+afterward, the tactic checks the side conditions and rewrites the goal.
+\end{lstlisting}
+This is the exact meeting point between the tactic language and the proof
+assistant plugin. Ltac decides which terms to send, ELPI encodes them and runs
+its polynomial routine, and the resulting tuple is consumed back in the proof
+script.
+\newpage
 \section{Making it a tactic}
 The extension provides an ELPI tactic. It computes the factors, normalizes the
 results in Rocq, and returns the least common multiple, reduced numerator,

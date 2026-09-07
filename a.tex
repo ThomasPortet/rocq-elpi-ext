@@ -304,18 +304,16 @@ hypothesis produced by field normalization, and the numerator and denominator:
 \begin{lstlisting}[language=ML]
 fraction_finisher Term hyp D N.
 \end{lstlisting}
-It then calls \texttt{factorize\_by\_gcd}, obtains the reduced data, proves the
-side conditions, and applies the resulting equality. The ELPI entry point is
+It then calls \texttt{factorize\_by\_gcd} to obtain the reduced data, proves the side conditions and applies the resulting equality. The ELPI entry point is
 therefore an auxiliary computation used by Ltac rather than the user-facing
 tactic itself.
 
 \section{Lessons learned}
-This experiment brings together four languages: the calculus of constructions,
+This experiment brings together four languages: Rocq,
 Ltac, ELPI, and OCaml. Ltac remains the central layer. A direct translation to
 OCaml is possible, but it is much heavier; ELPI is shorter and has access to
 both type checking and conversion. The Ltac infrastructure is powerful but not
-always easy to read or debug. One bug, for example, came from a $0$ where the
-OCaml code needed a $1$.
+always easy to read or debug. 
 
 \section{Future work}
 Future work includes deep field simplification, more careful staging, fewer

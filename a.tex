@@ -53,13 +53,16 @@ Consider
 \]
 \texttt{field} can prove this if it proves $\pi^2+\pi^2\ne0$ and
 $\pi\ne0$.
-
+In practice,\texttt{field} reduces the equality to these non-zero side conditions; they still have to be proven separately, for example using the positivity of
+$\pi$.
 Now consider the variant
 \[
-  e\!\left(\frac{\pi}{\pi^2+\pi^2}\right)
-  = e\!\left(\frac{1}{2\pi}\right).
+  \log\!\left(\frac{\pi}{\pi^2+\pi^2}\right)
+  = \log\!\left(\frac{1}{2\pi}\right).
 \]
-Here \texttt{field} fails because $x\mapsto e^x$ is not a field expression.
+Here \texttt{field} fails because $x\mapsto\log(x)$ is not a field
+expression. The same issue occurs for any outer function that is opaque to the
+tactic, such as $\exp$, $\sin$, or $\cos$.
 The same issue appears with \texttt{ring}:
 \[
   \pi^2+\pi\mathbin{\times}\pi=2\pi^2
@@ -74,9 +77,12 @@ looks like two different arguments to the tactic.
 \texttt{ring} works with integer constants, multiplication, addition,
 subtraction, and variables. Other expressions are treated as opaque variables:
 \begin{enumerate}
-  \item reify the formula into a formal polynomial language;
-  \item normalize the resulting polynomial expressions;
-  \item conclude when the normalized expressions are syntactically equal.
+  \item reify the formula by traversing its syntax and replacing each supported
+    operation by a constructor in an internal polynomial expression;
+  \item normalize that internal expression by collecting coefficients and
+    combining like monomials;
+  \item conclude when the normalized expressions are syntactically equal, since
+    the normalization procedure has proved that they denote the same ring term.
 \end{enumerate}
 For example, replacing $\pi$ by $X$ gives
 \[
@@ -100,20 +106,29 @@ For example,
  \cos(x+\cos(x+x))
  =\cos(\cos(2x)+(1-(1-x))),
 \]
-the relevant subexpressions include $x+\cos(x+x)$, $x+x$,
+the relevant subexpressions are $x+\cos(x+x)$, $x+x$,
 $\cos(2x)+(1-(1-x))$, and $2x$. Simplification turns $x+x$ into $2x$ and
 $\cos(2x)+(1-(1-x))$ into $x+\cos(2x)$. The equality becomes
 \[
   \cos(x+\cos(2x))=\cos(x+\cos(2x)).
 \]
+Reification treats a subterm outside the supported ring language as an atom.
+Thus, at one level, $x+\cos(x+x)$ is represented as the polynomial
+$X_1+X_2$, where $X_1$ represents $x$ and $X_2$ represents
+$\cos(x+x)$. Deep simplification first visits the argument $x+x$, normalizes
+it to $2x$, and then reifies the outer expression again. The atom for the
+function application can consequently be rebuilt as $\cos(2x)$, allowing the
+same process to continue at enclosing levels.
 
 \section{The remaining problem with \texttt{field\_simplify}}
 The standard \texttt{field} tactic uses fractions as normal forms, but it compares
 those fractions by cross multiplication:
 \[
-  \frac{p}{q}=\frac{r}{s}
+  q\ne0\ \land\ s\ne0
+  \quad\Longrightarrow\quad
+  \left(\frac{p}{q}=\frac{r}{s}
   \quad\Longleftrightarrow\quad
-  p\times s=q\times r\quad\land\quad q\ne0\quad\land\quad s\ne0.
+  p\times s=q\times r\right).
 \]
 This means a fraction does not need to be reduced in order to prove an equality.
 For example, $3\pi/6=2\pi/4$ is established by checking the cross-product
@@ -123,18 +138,28 @@ denominators.
 The difficulty is subtler when the fraction occurs inside a function. The tactic
 can prove that $3\pi/6$ and $2\pi/4$ are equal by cross multiplication, but it
 is not forced to choose the same syntactic representative on both sides. As a
-result, it cannot transform $\cos(3\pi/6)$ into $\cos(2\pi/4)$: after field
+result, it doesn't transform $\cos(3\pi/6)$ into $\cos(2\pi/4)$: after field
 normalization, the two arguments may still be different terms, even though they
 represent the same fraction. The mistake here is to confuse proving equality of
-fractions with producing identical fraction representations. What we need is a
+fractions with producing identical fraction representations. 
+\newline 
+
+What we need is a
 common representative for function arguments, and reducing the numerator and
 denominator via a polynomial gcd is one way to obtain it.
+
+The distinction is between a proof-oriented normal form and a representation
+chosen for computation. Cross multiplication is sufficient to prove an equality
+of fractions, but it does not necessarily rewrite both fractions to the same
+terms. Gcd reduction supplies numerator and denominator quotients that can be
+reused when the fraction appears below an otherwise opaque function.
 
 \section{Common structure for \texttt{field} and \texttt{ring}}
 Both tactics normalize terms and then check equality. For \texttt{ring}, the
 normal forms are polynomials and equality is syntactic. For \texttt{field}, the
-normal forms are fractions, and equality is checked via cross multiplication;
-this step also generates non-zero side conditions. For instance, proving
+normal forms are fractions. Before cross multiplication can be used, the tactic
+records the non-zero denominator conditions; the equality itself is then reduced
+to a polynomial identity. For instance, proving
 \[
   \frac{\pi}{\pi^2+\pi^2}=\frac{1}{2\pi}
 \]
@@ -146,8 +171,8 @@ The field-simplification theorem has the following shape:
 \[
  \operatorname{Fnorm}(l,e)=r \Longrightarrow
  \operatorname{FEeval}(l,e)=
- \frac{P\!\phi(l,\operatorname{norm}(\operatorname{num}(r)))}
-  {P\!\phi(l,\operatorname{norm}(\operatorname{den}(r)))}.
+ \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\operatorname{num}(r)))}
+  {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\operatorname{den}(r)))}.
 \]
 The extension adds a non-zero integer $m$ and polynomials $\nu$, $\delta$, and
 $\gamma$ such that
@@ -155,25 +180,72 @@ $\gamma$ such that
  m\ne0,\qquad m\,\operatorname{num}(r)=\nu\gamma,
  \qquad m\,\operatorname{den}(r)=\delta\gamma.
 \]
-For example, for the field expression
+For a simple non-trivial example, suppose the numerator and denominator are
+represented by
 \[
- \frac{1}{\sin(1)/(\cos(1)+\cos(1))},
+  N=X^2-1=(X-1)(X+1),\qquad D=X+1.
 \]
-the unknowns are $X_1=\sin(1)$ and $X_2=\cos(1)$, and the normalized field
-formula is $(X_2+X_2)/X_1$. The oracle receives these two polynomials and
-returns the common factor together with the quotient pair.
+The oracle returns the common factor $\gamma=X+1$ and the quotient pair
+$\nu=X-1$, $\delta=1$. The reduced fraction is therefore represented by
+$(X-1)/1$, which is a useful common representative inside an outer function.
 
 The new theorem uses the reduced numerator and denominator:
 \[
  \operatorname{FEeval}(l,e)=
- \frac{P\!\phi(l,\operatorname{norm}(\nu))}
-  {P\!\phi(l,\operatorname{norm}(\delta))}.
+ \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\nu))}
+  {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\delta))}.
 \]
 The oracle provides these values, and Rocq then proves the remaining side
-conditions. In other words, the reduction is a practical device for producing a
-canonical enough representative; it is not an extra requirement of the field
-comparison itself.
+conditions. In the example above, this turns an occurrence of
+$(X^2-1)/(X+1)$ under a function into the simpler occurrence $(X-1)/1$.
+The reduction is therefore a practical device for producing a common syntactic
+representative; it is not required for proving equality of fractions by
+cross-multiplication.
 
+\section{The polynomial oracle in more detail}
+The OCaml implementation does not manipulate the input expressions directly
+when computing the gcd. It first translates them into a sparse multivariate
+representation. A monomial consists of a rational coefficient and a sorted list
+of pairs $(i,e)$, where $i$ is a variable index and $e$ is its exponent. A
+polynomial is a list of such monomials. Addition collects monomials with the
+same exponent vector, while multiplication merges exponent vectors and
+multiplies coefficients.
+
+Rational coefficients are important because normalization can introduce
+non-integral leading coefficients. The implementation stores them explicitly as
+pairs of integers and reduces them after arithmetic operations. The surface
+syntax remains deliberately small:
+
+\begin{lstlisting}[language=ML]
+type rat = { num : int; den : int }
+
+type poly =
+  | Const of rat
+  | Var of int
+  | Add of poly * poly
+  | Mul of poly * poly
+\end{lstlisting}
+
+After conversion to the sparse representation, monomials are ordered
+lexicographically, with lower variable indices taking precedence. This order is
+used by leading-monomial selection, exact monomial division, polynomial
+reduction, and Buchberger's algorithm. The latter constructs a Groebner basis
+from the S-polynomials of the current basis elements and reduces each new
+remainder until all pairs have been processed.
+
+The gcd computation uses an auxiliary variable $t$. For input polynomials $p$
+and $q$, it considers the two generators
+\[
+  t p \qquad\text{and}\qquad (1-t)q.
+\]
+The $t$-free part of the ideal generated by these polynomials contains a
+generator for the least common multiple of $p$ and $q$. The implementation
+therefore shifts the original variables by one position, reserves variable $0$
+for $t$, computes a Groebner basis, and extracts the basis elements that do not
+contain $t$. After interreduction, the resulting LCM is used to obtain
+\[
+  \gcd(p,q)=\frac{p q}{\operatorname{lcm}(p,q)}.
+\]
 \section{Two polynomial representations}
 Rocq uses \texttt{PExpr} and \texttt{Pol}. The function \texttt{norm} converts
 \texttt{PExpr} into the sparse Horner form \texttt{Pol}. ELPI uses
@@ -183,23 +255,17 @@ For example, an ELPI expression such as
 \texttt{add (var 1) (mul (var 1) (var 1))} is first decoded to a Rocq
 \texttt{PExpr}, corresponding to $X_1+X_1^2$. Rocq then applies
 \texttt{norm} to obtain its sparse Horner representation in \texttt{Pol}. The
-reverse direction is used for the result returned by the oracle.
-
+reverse direction is used for the result returned by the oracle. This gives the
+pipeline three distinct representations: ELPI terms are convenient for pattern
+matching and foreign calls, \texttt{PExpr} is the Rocq syntax accepted by the
+normalizer, and \texttt{Pol} is the canonical sparse representation used by
+the field lemmas. Keeping these representations separate lets the OCaml code
+remain independent of Rocq's internal polynomial constructors.
 \section{ELPI as the bridge}
 ELPI is a Prolog-like language for term manipulation. Its foreign-function
 interface is implemented in OCaml and connects ELPI to OCaml code loaded by the
-Rocq plugin. The OCaml polynomial type is:
-\begin{lstlisting}[language=ML]
-type poly =
-  Const of int
-| Var of int
-| Add of poly * poly
-| Mul of poly * poly
-\end{lstlisting}
-This is the internal representation used after reification: each polynomial is a
-finite expression built from integer constants, indexed variables, addition, and
-multiplication. It is intentionally simple, because the gcd and reduction
-algorithms only need the ring structure and not the original surface syntax.
+Rocq plugin. The plugin exposes the polynomial representation to ELPI through
+constructors for constants, variables, addition, and multiplication.
 
 The plugin exposes \texttt{polyT} with constructors \texttt{pcst},
 \texttt{var}, \texttt{add}, and \texttt{mul}:
@@ -248,6 +314,13 @@ gcd_and_factors N D Ne De Gcd MZ :-
 The proof script still lives in Ltac, but the actual computation is delegated to
 ELPI. The bridge is explicit: an Ltac function builds a Rocq term, calls the
 ELPI computation, and receives back the reduced numerator, denominator, and gcd:
+The value named \texttt{res} is a nested Rocq pair returned by the ELPI tactic.
+The first projection is the integer scale factor, while the remaining
+projections contain the reduced numerator, reduced denominator, and gcd. The
+following calls to \texttt{cbv} only unpack this transport structure; they do
+not perform the polynomial computation again. The later assertions connect the
+oracle output back to Rocq by proving the two factorization identities and the
+non-zero condition on the scale factor.
 \begin{lstlisting}
 let res :=
   constr:(ltac:(elpi factorize_by_gcd ltac_term:(N1) ltac_term:(D1))) in
@@ -288,8 +361,9 @@ Elpi Accumulate lp:{{
     coq.reduction.vm.norm {{norm lp:D'}} {{Pol Z}} D'',
     refine {{pair lp:LCM (pair lp:N'' (pair lp:D'' lp:Gcd'))}} G GL.
 }}.
-\end{lstlisting}
 
+\end{lstlisting}
+%add stuff there
 \section{Integrating with \texttt{field}}
 The workaround is a parameterizable Ltac function with three parameters: a
 normalization function, a justification theorem, and a finishing tactic. The

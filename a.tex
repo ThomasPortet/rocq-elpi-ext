@@ -71,16 +71,16 @@ is easy for \texttt{ring}, but
 \[
   \ln(\pi^2+\pi\mathbin{\times}\pi)=\ln(2\pi^2)
 \]
-looks like two different arguments to the tactic.
+looks like an equality between two different arguments to the tactic.
 
 \section{How \texttt{ring} works}
 \texttt{ring} works with integer constants, multiplication, addition,
 subtraction, and variables. Other expressions are treated as opaque variables:
 \begin{enumerate}
   \item reify the formula by traversing its syntax and replacing each supported
-    operation by a constructor in an internal polynomial expression;
-  \item normalize that internal expression by collecting coefficients and
-    combining like monomials;
+    operation by a constructor in an internal polynomial expression; and replacing each expression starting with an unsupported operation by a fresh variable.
+  \item normalize the internal expression by collecting coefficients and
+    combining similar monomials;
   \item conclude when the normalized expressions are syntactically equal, since
     the normalization procedure has proved that they denote the same ring term.
 \end{enumerate}
@@ -100,7 +100,8 @@ arguments are equal.
 The idea is to simplify function arguments repeatedly. We collect the relevant
 subexpressions, apply ring simplification, and repeat until no further progress
 is made; then the proof closes by reflexivity.
-
+We only call \texttt{ring\_simplify} on the relevant subexpressions, namely those
+that occur as arguments of otherwise opaque function applications.
 For example,
 \[
  \cos(x+\cos(x+x))
@@ -134,25 +135,92 @@ This means a fraction does not need to be reduced in order to prove an equality.
 For example, $3\pi/6=2\pi/4$ is established by checking the cross-product
 identity $3\pi\times4=6\times2\pi$ together with the non-zero conditions on the
 denominators.
+The difficulty is subtler when the fraction occurs inside a function. The
+tactic can prove that
 
-The difficulty is subtler when the fraction occurs inside a function. The tactic
-can prove that $3\pi/6$ and $2\pi/4$ are equal by cross multiplication, but it
-is not forced to choose the same syntactic representative on both sides. As a
-result, it doesn't transform $\cos(3\pi/6)$ into $\cos(2\pi/4)$: after field
-normalization, the two arguments may still be different terms, even though they
-represent the same fraction. The mistake here is to confuse proving equality of
-fractions with producing identical fraction representations. 
-\newline 
+$$
+  \frac{3\pi}{6}=\frac{2\pi}{4}
+$$
 
-What we need is a
-common representative for function arguments, and reducing the numerator and
-denominator via a polynomial gcd is one way to obtain it.
+by cross multiplication, but this proof does not require either fraction to
+be rewritten to a common representative. In particular, the two sides can
+remain syntactically different after field normalization.
 
-The distinction is between a proof-oriented normal form and a representation
-chosen for computation. Cross multiplication is sufficient to prove an equality
-of fractions, but it does not necessarily rewrite both fractions to the same
-terms. Gcd reduction supplies numerator and denominator quotients that can be
-reused when the fraction appears below an otherwise opaque function.
+This distinction does not matter when the equality of the two fractions is
+the final goal. Once the cross-product equality and the required non-zero
+conditions have been established, the proof is complete. It matters when the
+fraction occurs as an argument of a function that is opaque to the field
+normalizer. Consider
+
+$$
+  \cos\left(\frac{3\pi}{6}\right)
+  =
+  \cos\left(\frac{2\pi}{4}\right).
+$$
+
+The field normalizer can reason about the two fractions, but it does not
+normalize the surrounding occurrences of \texttt{cos}. The two function
+applications can therefore contain different terms even when their
+arguments have been proved equal.
+
+The required operation is consequently stronger than proving equality of
+the two fractions. We need to transform both fractions to a common
+representative that can be used in the surrounding expression. For the
+example above, a suitable representative is
+
+$$
+  \frac{\pi}{2}.
+$$
+
+The desired transformation is therefore
+
+$$
+  \cos\left(\frac{3\pi}{6}\right)
+  \longrightarrow
+  \cos\left(\frac{\pi}{2}\right)
+  \longleftarrow
+  \cos\left(\frac{2\pi}{4}\right).
+$$
+
+Cross multiplication alone does not provide this representation. It
+establishes an equality between fractions, but it does not require the
+numerator and denominator of each fraction to be divided by their common
+factor. This is the difference between proving that two expressions are
+equal and computing a representation that is useful for rewriting.
+
+A polynomial gcd provides the missing operation. Given a numerator
+$N$ and denominator $D$, we compute a common factor $G$ and corresponding
+quotients. The numerator and denominator can then be represented by
+reduced terms. For example,
+
+$$
+  N=X^2-1,\qquad D=X+1
+$$
+
+have the common factor $G=X+1$, giving
+
+$$
+  N=(X-1)G,\qquad D=1G.
+$$
+
+The fraction can therefore be represented by
+
+$$
+  \frac{X-1}{1}.
+$$
+
+The reduction is useful here because the resulting numerator and
+denominator can be used as a common representation when the fraction occurs
+below an opaque function. The gcd computation is not needed to establish
+the equality of two fractions by cross multiplication. It is needed to
+produce a representation that can be propagated through the surrounding
+term.
+
+This distinction also explains why the extension is useful for the
+reflexive tactics considered here. The normalizer already has enough
+information to establish many equalities. The additional computation is
+used when the normal form itself must be exposed inside a larger expression.
+
 
 \section{Common structure for \texttt{field} and \texttt{ring}}
 Both tactics normalize terms and then check equality. For \texttt{ring}, the
@@ -174,33 +242,143 @@ The field-simplification theorem has the following shape:
  \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\operatorname{num}(r)))}
   {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\operatorname{den}(r)))}.
 \]
-The extension adds a non-zero integer $m$ and polynomials $\nu$, $\delta$, and
-$\gamma$ such that
-\[
- m\ne0,\qquad m\,\operatorname{num}(r)=\nu\gamma,
- \qquad m\,\operatorname{den}(r)=\delta\gamma.
-\]
-For a simple non-trivial example, suppose the numerator and denominator are
-represented by
-\[
-  N=X^2-1=(X-1)(X+1),\qquad D=X+1.
-\]
-The oracle returns the common factor $\gamma=X+1$ and the quotient pair
-$\nu=X-1$, $\delta=1$. The reduced fraction is therefore represented by
-$(X-1)/1$, which is a useful common representative inside an outer function.
+The purpose of the oracle is to compute a common factor together with the
+quotients required by the field-simplification theorem. For a simple
+non-trivial example, consider
 
-The new theorem uses the reduced numerator and denominator:
-\[
- \operatorname{FEeval}(l,e)=
- \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\nu))}
-  {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\delta))}.
-\]
-The oracle provides these values, and Rocq then proves the remaining side
-conditions. In the example above, this turns an occurrence of
-$(X^2-1)/(X+1)$ under a function into the simpler occurrence $(X-1)/1$.
-The reduction is therefore a practical device for producing a common syntactic
-representative; it is not required for proving equality of fractions by
-cross-multiplication.
+$$
+  N=X^2-1=(X-1)(X+1),
+  \qquad
+  D=X+1.
+$$
+
+The common factor is
+
+$$
+  \gamma=X+1.
+$$
+
+The corresponding quotients are
+
+$$
+  \nu=X-1,
+  \qquad
+  \delta=1.
+$$
+
+The reduced fraction is therefore represented by
+
+$$
+  \frac{\nu}{\delta}
+  =
+  \frac{X-1}{1}.
+$$
+
+The oracle does not directly return an equality proof. Instead, it returns
+the data from which Rocq can construct such a proof. More precisely, the
+extension introduces a non-zero integer $m$ and requires
+
+$$
+  mN=\nu\gamma,
+  \qquad
+  mD=\delta\gamma.
+$$
+
+The integer $m$ accounts for the fact that the polynomial representation
+used by the oracle may differ from the normalized representation used by
+Rocq by a non-zero scalar.
+
+The Rocq side subsequently proves these two factorization identities and
+the condition
+
+$$
+  m\ne0.
+$$
+
+The output of the oracle is therefore treated as computational data, while
+the identities that justify its use are established inside Rocq.
+
+The resulting theorem uses the reduced numerator and denominator:
+
+$$
+  \operatorname{FEeval}(l,e)=
+  \frac{\operatorname{Pphi\_pow}(l,\operatorname{norm}(\nu))}
+       {\operatorname{Pphi\_pow}(l,\operatorname{norm}(\delta))}.
+$$
+
+Thus the oracle supplies a candidate reduced representation, and the proof
+script verifies the algebraic relations required to use it.
+
+This reduction should be distinguished from the usual proof of equality of
+fractions. Cross multiplication is sufficient for such a proof. The gcd
+computation instead provides numerator and denominator quotients that can be
+used to construct a common representation. This is the representation
+needed when the fraction occurs below an otherwise opaque function.
+\section{A complete example}
+
+Consider a fraction occurring inside an opaque function,
+
+$$
+  f\left(\frac{X^2-1}{X+1}\right),
+$$
+
+where the function $f$ is not part of the polynomial language handled by
+the field normalizer. The field normalization procedure can reason about
+the fraction, but it does not by itself require the fraction to be reduced
+to a common representative.
+
+The numerator and denominator are
+
+$$
+  N=X^2-1,\qquad D=X+1.
+$$
+
+The polynomial gcd computation returns
+
+$$
+  \gamma=X+1,
+  \qquad
+  \nu=X-1,
+  \qquad
+  \delta=1.
+$$
+
+The returned data satisfy
+
+$$
+  N=\nu\gamma,
+  \qquad
+  D=\delta\gamma.
+$$
+
+In this example the scale factor is $m=1$.
+
+The fraction can consequently be represented as
+
+$$
+  \frac{N}{D}
+  =
+  \frac{\nu}{\delta}
+  =
+  \frac{X-1}{1}.
+$$
+
+The useful result is not only the proof that the two fractions are equal.
+The reduced numerator and denominator provide a new representation that can
+be inserted into the surrounding expression:
+
+$$
+  f\left(\frac{X^2-1}{X+1}\right)
+  \longrightarrow
+  f\left(\frac{X-1}{1}\right).
+$$
+
+The example illustrates the role of the gcd computation in the extension.
+The polynomial gcd is used to obtain the common factor that is removed from
+the numerator and denominator. Rocq then verifies the factorization
+identities returned by the computation. The external computation therefore
+determines the candidate representation, while the proof script establishes
+the equalities needed to justify the rewrite.
 
 \section{The polynomial oracle in more detail}
 The OCaml implementation does not manipulate the input expressions directly
@@ -251,6 +429,39 @@ Rocq uses \texttt{PExpr} and \texttt{Pol}. The function \texttt{norm} converts
 \texttt{PExpr} into the sparse Horner form \texttt{Pol}. ELPI uses
 \texttt{polyT}. The bridge converts between these representations.
 
+
+For example, the polynomial
+
+$$
+  X_1+X_1^2
+$$
+
+is represented in \texttt{PExpr} as
+
+$$
+  \texttt{PEadd (PEX 1) (PEmul (PEX 1) (PEX 1))}.
+$$
+
+Applying \texttt{norm} produces its canonical \texttt{Pol} representation.
+The corresponding ELPI expression,
+
+$$
+  \texttt{add (var 1) (mul (var 1) (var 1))},
+$$
+
+is decoded into this \texttt{PExpr} representation before normalization.
+The reverse conversion is used to return the result of the polynomial
+computation to ELPI.
+
+This gives the pipeline three distinct representations: ELPI terms are
+convenient for pattern matching and foreign calls, \texttt{PExpr} is the
+Rocq syntax accepted by the normalizer, and \texttt{Pol} is the canonical
+sparse representation used by the field lemmas. Keeping these
+representations separate lets the OCaml code remain independent of Rocq's
+internal polynomial constructors.
+
+\texttt{Pol} representation.
+% something done right ring normalization mahboubi TODO CITATION 
 For example, an ELPI expression such as
 \texttt{add (var 1) (mul (var 1) (var 1))} is first decoded to a Rocq
 \texttt{PExpr}, corresponding to $X_1+X_1^2$. Rocq then applies
@@ -345,6 +556,71 @@ equalities are proved only after the oracle has returned its factors, and the
 resulting hypothesis is then used to rewrite the original term. Ltac chooses the
 terms to send, ELPI encodes them and runs the polynomial routine, and the tuple
 coming back is consumed by the proof script.
+\section{Architecture of the extension}
+
+The extension separates the proof-producing part of the tactic from the
+polynomial computation. Ltac remains responsible for interacting with the
+existing field-simplification infrastructure and for constructing the final
+proof. ELPI is used as the interface between this Ltac code and the
+polynomial computation implemented in OCaml.
+
+The data passes through several representations. The original numerator and
+denominator are Rocq terms. They are passed to ELPI, where they are encoded
+as values of type \texttt{polyT}. These values provide a representation that
+can be inspected and passed to foreign functions. The decoder then converts
+them to Rocq's \texttt{PExpr} representation.
+
+The \texttt{PExpr} representation is useful because it is accepted by
+Rocq's polynomial normalizer. Applying \texttt{norm} converts the expression
+to the corresponding \texttt{Pol} representation. The polynomial data can
+then be passed to the OCaml gcd implementation.
+
+The reverse path is used for the result. The polynomial factors returned by
+the OCaml computation are converted back to \texttt{polyT}, decoded to
+Rocq terms, and normalized to \texttt{Pol} when necessary. ELPI returns the
+result to the Ltac code as a tuple containing the scale factor, reduced
+numerator, reduced denominator, and gcd.
+
+The separation between these representations has a practical purpose. ELPI
+terms provide a convenient interface for pattern matching and foreign
+calls, while \texttt{PExpr} and \texttt{Pol} remain the representations used
+by Rocq's existing polynomial machinery. The OCaml implementation therefore
+does not need to construct or manipulate Rocq's internal polynomial
+representations directly.
+The complete computation can be summarized as follows:
+\[
+\begin{array}{c}
+\text{Rocq term}
+\\
+\downarrow
+\\
+\texttt{polyT}
+\\
+\downarrow
+\\
+\texttt{PExpr}
+\\
+\ \ \    \ \ \   \mathord{\downarrow}\texttt{norm}
+\\
+\texttt{Pol}
+\\
+\downarrow
+\\
+\text{OCaml gcd computation}
+\\
+\downarrow
+\\
+\text{resulting polynomial data}
+\end{array}
+\]
+The result then follows the reverse path before being consumed by the Ltac
+proof script.
+
+This architecture also separates computation from proof construction. The
+OCaml code computes polynomial data, but the Ltac code subsequently uses
+this data to construct the equalities required by the field theorem. The
+external computation therefore supplies information used by the proof
+rather than replacing the proof of the algebraic identities.
 
 \section{Making the computation available}
 The extension provides an ELPI entry point used by the Ltac function. It computes

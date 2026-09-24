@@ -287,7 +287,22 @@ $$
 The integer $m$ accounts for the fact that the polynomial representation
 used by the oracle may differ from the normalized representation used by
 Rocq by a non-zero scalar.
+The scale factor is therefore part of the interface between the two
+polynomial representations. The oracle is free to return a polynomial
+representation that is equivalent up to a non-zero integer factor, while the
+Rocq side can account for this factor explicitly in the factorization
+identities.
 
+The two identities
+\[
+  mN=\nu\gamma,
+  \qquad
+  mD=\delta\gamma
+\]
+show that the same factor $\gamma$ has been removed from the numerator and
+denominator. Since $m\ne0$, this scaling does not change the represented
+fraction. The field theorem can consequently replace the original numerator
+and denominator by $\nu$ and $\delta$.
 The Rocq side subsequently proves these two factorization identities and
 the condition
 
@@ -664,7 +679,11 @@ Ltac, ELPI, and OCaml. Ltac remains the central layer. A direct translation to
 OCaml is possible, but it is much heavier; ELPI is shorter and has access to
 both type checking and conversion. The Ltac infrastructure is powerful but not
 always easy to read or debug. 
-
+The current extension addresses the representation problem for a field
+expression selected by the existing field-simplification infrastructure. It
+does not yet provide the same recursive traversal of arbitrary nested field
+expressions as the deep ring procedure described above. A more general deep
+field simplification strategy is therefore left for future work.
 \section{Future work}
 Future work includes deep field simplification, more careful staging, fewer
 generated conditions, support for exponents in deep ring and field reasoning,

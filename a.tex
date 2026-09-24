@@ -418,14 +418,39 @@ type poly =
   | Add of poly * poly
   | Mul of poly * poly
 \end{lstlisting}
+For example, the monomial
+\[
+  3X_1^2X_4
+\]
+is represented by the coefficient $3$ together with the exponent list
+\[
+  [(1,2),(4,1)].
+\]
+A polynomial is then a collection of such monomials. Terms with the same
+exponent list are combined during addition, while multiplication adds the
+corresponding exponents and multiplies the coefficients.
 
+This representation is sparse: variables that do not occur in a monomial
+do not appear in its exponent list. This avoids representing a polynomial
+as a dense array whose size would depend on the largest variable index or
+degree.
 After conversion to the sparse representation, monomials are ordered
 lexicographically, with lower variable indices taking precedence. This order is
 used by leading-monomial selection, exact monomial division, polynomial
 reduction, and Buchberger's algorithm. The latter constructs a Groebner basis
 from the S-polynomials of the current basis elements and reduces each new
 remainder until all pairs have been processed.
+The ordering is also used to select a leading monomial during polynomial
+reduction. Given a polynomial and a basis element, the implementation first
+checks whether the leading monomial of the basis element divides the leading
+monomial of the polynomial being reduced. If so, the corresponding multiple
+of the basis element is subtracted. Otherwise the leading monomial is moved
+to the remainder. Repeating this process gives the normal remainder with
+respect to the current basis.
 
+Buchberger's algorithm applies this reduction to the $S$-polynomials of pairs
+of basis elements. The resulting basis is then used by the gcd computation
+described above.
 The gcd computation uses an auxiliary variable $t$. For input polynomials $p$
 and $q$, it considers the two generators
 \[

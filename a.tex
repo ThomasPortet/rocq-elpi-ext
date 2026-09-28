@@ -8,6 +8,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{hyperref}
+\usepackage{tikz-cd}
 \geometry{margin=1in}
 \setlist[itemize]{leftmargin=*}
 \lstset{basicstyle=\small\ttfamily, columns=fullflexible, keepspaces=true,
@@ -53,7 +54,7 @@ Consider
 \]
 \texttt{field} can prove this if it proves $\pi^2+\pi^2\ne0$ and
 $\pi\ne0$.
-In practice,\texttt{field} reduces the equality to these non-zero side conditions; they still have to be proven separately, for example using the positivity of
+In practice, \texttt{field} reduces the equality to these non-zero side conditions; they still have to be proven separately, for example using the positivity of
 $\pi$.
 Now consider the variant
 \[
@@ -61,8 +62,7 @@ Now consider the variant
   = \log\!\left(\frac{1}{2\pi}\right).
 \]
 Here \texttt{field} fails because $x\mapsto\log(x)$ is not a field
-expression. The same issue occurs for any outer function that is opaque to the
-tactic, such as $\exp$, $\sin$, or $\cos$.
+expression. The same issue occurs for any outer function that is not handled by the tactic, such as $\exp$, $\sin$, or $\cos$.
 The same issue appears with \texttt{ring}:
 \[
   \pi^2+\pi\mathbin{\times}\pi=2\pi^2
@@ -75,7 +75,7 @@ looks like an equality between two different arguments to the tactic.
 
 \section{How \texttt{ring} works}
 \texttt{ring} works with integer constants, multiplication, addition,
-subtraction, and variables. Other expressions are treated as opaque variables:
+subtraction, and variables. Other expressions are treated as fresh variables :
 \begin{enumerate}
   \item reify the formula by traversing its syntax and replacing each supported
     operation by a constructor in an internal polynomial expression; and replacing each expression starting with an unsupported operation by a fresh variable.
@@ -101,7 +101,7 @@ The idea is to simplify function arguments repeatedly. We collect the relevant
 subexpressions, apply ring simplification, and repeat until no further progress
 is made; then the proof closes by reflexivity.
 We only call \texttt{ring\_simplify} on the relevant subexpressions, namely those
-that occur as arguments of otherwise opaque function applications.
+that occur as arguments of function applications not handled by the normalizer.
 For example,
 \[
  \cos(x+\cos(x+x))
@@ -161,7 +161,7 @@ $$
 The field normalizer can reason about the two fractions, but it does not
 normalize the surrounding occurrences of \texttt{cos}. The two function
 applications can therefore contain different terms even when their
-arguments have been proved equal.
+arguments could be proved equal.
 
 The required operation is consequently stronger than proving equality of
 the two fractions. We need to transform both fractions to a common
@@ -211,7 +211,7 @@ $$
 
 The reduction is useful here because the resulting numerator and
 denominator can be used as a common representation when the fraction occurs
-below an opaque function. The gcd computation is not needed to establish
+as an argument of a function not handled by the normalizer. The gcd computation is not needed to establish
 the equality of two fractions by cross multiplication. It is needed to
 produce a representation that can be propagated through the surrounding
 term.
@@ -286,12 +286,10 @@ $$
 
 The integer $m$ accounts for the fact that the polynomial representation
 used by the oracle may differ from the normalized representation used by
-Rocq by a non-zero scalar.
+Rocq up to multiplication with a non-zero scalar.
 The scale factor is therefore part of the interface between the two
-polynomial representations. The oracle is free to return a polynomial
-representation that is equivalent up to a non-zero integer factor, while the
-Rocq side can account for this factor explicitly in the factorization
-identities.
+polynomial representations.The polynomial representation returned by the oracle may differ from Rocq's normalized representation by a non-zero integer factor. The factor \(m\) records this difference and allows Rocq to express the relationship between the two representations through the factorization identities.
+
 
 The two identities
 \[
@@ -310,8 +308,7 @@ $$
   m\ne0.
 $$
 
-The output of the oracle is therefore treated as computational data, while
-the identities that justify its use are established inside Rocq.
+The output of the oracle is therefore used in later computation. The oracle is not trusted blindly, the equalities that the output should satisfy are verified in the Rocq side.
 
 The resulting theorem uses the reduced numerator and denominator:
 
@@ -331,21 +328,18 @@ used to construct a common representation. This is the representation
 needed when the fraction occurs below an otherwise opaque function.
 \section{A complete example}
 
-Consider a fraction occurring inside an opaque function,
+The following example illustrates the reduction of a fraction that occurs as an argument of a function not handled by the field normalizer. Consider
 
 $$
-  f\left(\frac{X^2-1}{X+1}\right),
+f\left(\frac{X^2-1}{X^2+2X+1}\right),
 $$
 
-where the function $f$ is not part of the polynomial language handled by
-the field normalizer. The field normalization procedure can reason about
-the fraction, but it does not by itself require the fraction to be reduced
-to a common representative.
+where \(f\) is outside the polynomial language handled by the field normalizer. The field normalizer can represent and reason about the numerator and denominator of the fraction, but it does not necessarily rewrite the fraction to a reduced form before the surrounding function application is processed.
 
 The numerator and denominator are
 
 $$
-  N=X^2-1,\qquad D=X+1.
+  N=X^2-1,\qquad D=X^2+2X+1.
 $$
 
 The polynomial gcd computation returns
@@ -355,7 +349,7 @@ $$
   \qquad
   \nu=X-1,
   \qquad
-  \delta=1.
+  \delta=X+1.
 $$
 
 The returned data satisfy
@@ -375,18 +369,18 @@ $$
   =
   \frac{\nu}{\delta}
   =
-  \frac{X-1}{1}.
+  \frac{X-1}{X+1}.
 $$
-
-The useful result is not only the proof that the two fractions are equal.
-The reduced numerator and denominator provide a new representation that can
-be inserted into the surrounding expression:
+The gcd computation provides a reduced representation of the fraction that can be used to rewrite the argument of \(f\). In particular, the original function application can be rewritten as
 
 $$
-  f\left(\frac{X^2-1}{X+1}\right)
-  \longrightarrow
-  f\left(\frac{X-1}{1}\right).
+f\left(\frac{X^2-1}{X^2+2X+1}\right)
+\longrightarrow
+f\left(\frac{X-1}{X+1}\right).
 $$
+
+The rewrite is justified by the factorization identities verified by Rocq.
+
 
 The example illustrates the role of the gcd computation in the extension.
 The polynomial gcd is used to obtain the common factor that is removed from
@@ -426,22 +420,13 @@ is represented by the coefficient $3$ together with the exponent list
 \[
   [(1,2),(4,1)].
 \]
-A polynomial is then a collection of such monomials. Terms with the same
-exponent list are combined during addition, while multiplication adds the
-corresponding exponents and multiplies the coefficients.
+A polynomial is represented as a collection of monomials. Each monomial is identified by its exponent list, with its rational coefficient stored separately. Addition combines coefficients of monomials with identical exponent lists. Multiplication adds the corresponding exponents and multiplies the coefficients.
 
-This representation is sparse: variables that do not occur in a monomial
-do not appear in its exponent list. This avoids representing a polynomial
-as a dense array whose size would depend on the largest variable index or
-degree.
-After conversion to the sparse representation, monomials are ordered
-lexicographically, with lower variable indices taking precedence. This order is
-used by leading-monomial selection, exact monomial division, polynomial
-reduction, and Buchberger's algorithm. The latter constructs a Groebner basis
-from the S-polynomials of the current basis elements and reduces each new
-remainder until all pairs have been processed.
-The ordering is also used to select a leading monomial during polynomial
-reduction. Given a polynomial and a basis element, the implementation first
+The representation is sparse: variables absent from a monomial do not occur in its exponent list. Consequently, the representation does not require a dense array whose size depends on the largest variable index or degree.
+
+After conversion to the sparse representation, monomials are ordered lexicographically, with lower variable indices taking precedence. This order determines the leading monomial used in polynomial reduction and Buchberger's algorithm.
+
+Given a polynomial and a basis element, the implementation first
 checks whether the leading monomial of the basis element divides the leading
 monomial of the polynomial being reduced. If so, the corresponding multiple
 of the basis element is subtracted. Otherwise the leading monomial is moved
@@ -491,27 +476,14 @@ $$
 
 is decoded into this \texttt{PExpr} representation before normalization.
 The reverse conversion is used to return the result of the polynomial
-computation to ELPI.
+computation to ELPI.%TODO move that part; rephrase
 
-This gives the pipeline three distinct representations: ELPI terms are
-convenient for pattern matching and foreign calls, \texttt{PExpr} is the
-Rocq syntax accepted by the normalizer, and \texttt{Pol} is the canonical
-sparse representation used by the field lemmas. Keeping these
-representations separate lets the OCaml code remain independent of Rocq's
-internal polynomial constructors.
+The three representations serve different purposes. ELPI's \texttt{polyT} provides the interface for encoding polynomials and passing them to foreign functions. Rocq's \texttt{PExpr} is the expression language accepted by the \texttt{norm} function, while \texttt{Pol} is the normalized representation used by the field lemmas. The conversion functions connect these representations, so the OCaml implementation can operate on its own polynomial data type without directly constructing Rocq's \texttt{PExpr} or \texttt{Pol} terms.
 
-\texttt{Pol} representation.
-% something done right ring normalization mahboubi TODO CITATION 
-For example, an ELPI expression such as
-\texttt{add (var 1) (mul (var 1) (var 1))} is first decoded to a Rocq
-\texttt{PExpr}, corresponding to $X_1+X_1^2$. Rocq then applies
-\texttt{norm} to obtain its sparse Horner representation in \texttt{Pol}. The
-reverse direction is used for the result returned by the oracle. This gives the
-pipeline three distinct representations: ELPI terms are convenient for pattern
-matching and foreign calls, \texttt{PExpr} is the Rocq syntax accepted by the
-normalizer, and \texttt{Pol} is the canonical sparse representation used by
-the field lemmas. Keeping these representations separate lets the OCaml code
-remain independent of Rocq's internal polynomial constructors.
+
+% \texttt{Pol} representation.
+% % something done right ring normalization mahboubi TODO CITATION 
+
 \section{ELPI as the bridge}
 ELPI is a Prolog-like language for term manipulation. Its foreign-function
 interface is implemented in OCaml and connects ELPI to OCaml code loaded by the
@@ -564,7 +536,7 @@ gcd_and_factors N D Ne De Gcd MZ :-
 \section{Ltac calling ELPI}
 The proof script still lives in Ltac, but the actual computation is delegated to
 ELPI. The bridge is explicit: an Ltac function builds a Rocq term, calls the
-ELPI computation, and receives back the reduced numerator, denominator, and gcd:
+ELPI computation, and receives back the scale factor, reduced numerator, reduced denominator, and gcd.
 The value named \texttt{res} is a nested Rocq pair returned by the ELPI tactic.
 The first projection is the integer scale factor, while the remaining
 projections contain the reduced numerator, reduced denominator, and gcd. The
@@ -604,57 +576,41 @@ existing field-simplification infrastructure and for constructing the final
 proof. ELPI is used as the interface between this Ltac code and the
 polynomial computation implemented in OCaml.
 
-The data passes through several representations. The original numerator and
-denominator are Rocq terms. They are passed to ELPI, where they are encoded
-as values of type \texttt{polyT}. These values provide a representation that
-can be inspected and passed to foreign functions. The decoder then converts
-them to Rocq's \texttt{PExpr} representation.
+The data passes through several representations. On the outbound path, Ltac provides the numerator and denominator as Rocq terms. These terms are converted to \texttt{PExpr} and then encoded as \texttt{polyT} values, which are passed to the OCaml implementation through a foreign-function call.
 
-The \texttt{PExpr} representation is useful because it is accepted by
-Rocq's polynomial normalizer. Applying \texttt{norm} converts the expression
-to the corresponding \texttt{Pol} representation. The polynomial data can
-then be passed to the OCaml gcd implementation.
+On the return path, the foreign function returns the scale factor and polynomial factors. The polynomial outputs are encoded as \texttt{polyT} values, decoded to Rocq's \texttt{PExpr} representation, and normalized to \texttt{Pol} when required. The resulting tuple, containing the scale factor, reduced numerator, reduced denominator, and gcd, is returned to Ltac.
 
-The reverse path is used for the result. The polynomial factors returned by
-the OCaml computation are converted back to \texttt{polyT}, decoded to
-Rocq terms, and normalized to \texttt{Pol} when necessary. ELPI returns the
-result to the Ltac code as a tuple containing the scale factor, reduced
-numerator, reduced denominator, and gcd.
+The representations serve distinct purposes. ELPI's \texttt{polyT} provides the interface for foreign-function calls, while \texttt{PExpr} and \texttt{Pol} are used by Rocq's existing polynomial machinery. Ltac uses the returned data to construct the factorization equalities and the final proof.
 
-The separation between these representations has a practical purpose. ELPI
-terms provide a convenient interface for pattern matching and foreign
-calls, while \texttt{PExpr} and \texttt{Pol} remain the representations used
-by Rocq's existing polynomial machinery. The OCaml implementation therefore
-does not need to construct or manipulate Rocq's internal polynomial
-representations directly.
-The complete computation can be summarized as follows:
+The data flow has two directions. On the outbound path, Ltac supplies Rocq expressions, which are converted to \texttt{PExpr} and then encoded as \texttt{polyT} terms for the foreign-function call. On the return path, the foreign function returns polynomial data, which is represented in ELPI as \texttt{polyT}, decoded to \texttt{PExpr}, and normalized to \texttt{Pol}. The resulting polynomial data is then returned to Ltac for proof construction.
+
 \[
-\begin{array}{c}
-\text{Rocq term}
-\\
-\downarrow
-\\
-\texttt{polyT}
-\\
-\downarrow
-\\
+\begin{tikzcd}[column sep=large]
+\text{Ltac}
+  \arrow[r] &
 \texttt{PExpr}
-\\
-\ \ \    \ \ \   \mathord{\downarrow}\texttt{norm}
-\\
+  \arrow[r] &
+\texttt{polyT}
+  \arrow[r] &
+\text{Foreign-function call}
+\\[1.5em]
+\text{Ltac} &
 \texttt{Pol}
-\\
-\downarrow
-\\
-\text{OCaml gcd computation}
-\\
-\downarrow
-\\
-\text{resulting polynomial data}
-\end{array}
+  \arrow[l]
+&
+\texttt{PExpr}
+  \arrow[l, "\text{norm}"']
+&
+\texttt{polyT}
+  \arrow[l]
+  &
+\text{Foreign-function call}
+  \arrow[l]
+\end{tikzcd}
 \]
-The result then follows the reverse path before being consumed by the Ltac
-proof script.
+
+The foreign-function call returns the scale factor and polynomial factors. The return path converts these outputs into the representations expected by Rocq before Ltac uses them to construct the proof.
+
 
 This architecture also separates computation from proof construction. The
 OCaml code computes polynomial data, but the Ltac code subsequently uses
@@ -664,7 +620,7 @@ rather than replacing the proof of the algebraic identities.
 
 \section{Making the computation available}
 The extension provides an ELPI entry point used by the Ltac function. It computes
-the factors, normalizes them in Rocq, and returns the least common multiple,
+the factors, normalizes them in Rocq, and returns the scale factor m,
 reduced numerator, reduced denominator, and gcd:
 \begin{lstlisting}
 Elpi Tactic factorize_by_gcd.
@@ -710,10 +666,8 @@ does not yet provide the same recursive traversal of arbitrary nested field
 expressions as the deep ring procedure described above. A more general deep
 field simplification strategy is therefore left for future work.
 \section{Future work}
-Future work includes deep field simplification, more careful staging, fewer
-generated conditions, support for exponents in deep ring and field reasoning,
-commutative-group isomorphisms, and a stronger polynomial gcd computation with
-unbound integers.
+
+Future work includes extending the gcd-based reduction to a more general deep field simplification procedure, more careful staging, fewer generated conditions, support for exponents in deep ring and field reasoning, commutative-group isomorphisms, and a stronger polynomial gcd computation with unbound integers.
 
 \section{Conclusion}
 Ring normalization can simplify expressions even when they appear under function

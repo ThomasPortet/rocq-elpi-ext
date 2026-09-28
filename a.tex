@@ -426,8 +426,9 @@ $$
   [(1,2),(4,1)].
 $$
 
-The function \texttt{to_mpoly} translates the expression tree into a list of monomials. The function \texttt{collect} then combines monomials with the same exponent list by adding their coefficients. For example,
-$2X_1^2X_4 + 3X_1^2X_4$ becomes $5X_1^2X_4$.
+The function \texttt{to\_mpoly} translates the expression tree into a list of monomials. The function \texttt{collect} then combines monomials with the same exponent list by adding their coefficients.
+
+For example, $2X_1^2X_4 + 3X_1^2X_4$ becomes $5X_1^2X_4$ .
 Polynomial arithmetic, monomial ordering, reduction, and Buchberger's
 algorithm operate on this sparse representation. The result is converted back
 to \texttt{poly} when it is returned by the oracle.

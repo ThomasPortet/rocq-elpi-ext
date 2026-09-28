@@ -390,41 +390,54 @@ determines the candidate representation, while the proof script establishes
 the equalities needed to justify the rewrite.
 
 \section{The polynomial oracle in more detail}
-The OCaml implementation does not manipulate the input expressions directly
-when computing the gcd. It first translates them into a sparse multivariate
-representation. A monomial consists of a rational coefficient and a sorted list
-of pairs $(i,e)$, where $i$ is a variable index and $e$ is its exponent. A
-polynomial is a list of such monomials. Addition collects monomials with the
-same exponent vector, while multiplication merges exponent vectors and
-multiplies coefficients.
-
-Rational coefficients are important because normalization can introduce
-non-integral leading coefficients. The implementation stores them explicitly as
-pairs of integers and reduces them after arithmetic operations. The surface
-syntax remains deliberately small:
+The OCaml implementation uses two representations of polynomials. The
+\texttt{poly} type is an expression-tree representation used at the interface
+of the computation:
 
 \begin{lstlisting}[language=ML]
-type rat = { num : int; den : int }
+type rat = { num: int; den: int }
 
 type poly =
-  | Const of rat
-  | Var of int
-  | Add of poly * poly
-  | Mul of poly * poly
+| Const of rat
+| Var of int
+| Add of poly * poly
+| Mul of poly * poly
 \end{lstlisting}
+
+Before performing polynomial computations, the implementation converts a
+\texttt{poly} expression to a sparse multivariate representation. A monomial
+consists of a rational coefficient and a sorted list of pairs $(i,e)$, where
+$i$ is a variable index and $e$ is its exponent:
+
+\begin{lstlisting}[language=ML]
+type monomial = { coef: rat; exps: (int * int) list }
+type mpoly = monomial list
+\end{lstlisting}
+
 For example, the monomial
-\[
+
+$$
   3X_1^2X_4
-\]
-is represented by the coefficient $3$ together with the exponent list
-\[
+$$
+
+is represented by the coefficient $3$ and the exponent list
+
+$$
   [(1,2),(4,1)].
-\]
-A polynomial is represented as a collection of monomials. Each monomial is identified by its exponent list, with its rational coefficient stored separately. Addition combines coefficients of monomials with identical exponent lists. Multiplication adds the corresponding exponents and multiplies the coefficients.
+$$
 
-The representation is sparse: variables absent from a monomial do not occur in its exponent list. Consequently, the representation does not require a dense array whose size depends on the largest variable index or degree.
+The function \texttt{to_mpoly} translates the expression tree into a list of monomials. The function \texttt{collect} then combines monomials with the same exponent list by adding their coefficients. For example,
+$2X_1^2X_4 + 3X_1^2X_4$ becomes $5X_1^2X_4$.
+Polynomial arithmetic, monomial ordering, reduction, and Buchberger's
+algorithm operate on this sparse representation. The result is converted back
+to \texttt{poly} when it is returned by the oracle.
 
-After conversion to the sparse representation, monomials are ordered lexicographically, with lower variable indices taking precedence. This order determines the leading monomial used in polynomial reduction and Buchberger's algorithm.
+Rational coefficients are stored explicitly because the polynomial
+computations can introduce non-integral coefficients. Monomials are ordered
+lexicographically, with lower variable indices taking precedence. This order
+determines the leading monomial used in polynomial reduction and
+Buchberger's algorithm.
+
 
 Given a polynomial and a basis element, the implementation first
 checks whether the leading monomial of the basis element divides the leading

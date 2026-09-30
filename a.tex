@@ -28,24 +28,120 @@ contain functions outside the ring or field fragment. The approach rewrites the
 arguments of such functions, computes polynomial greatest common divisors with
 an OCaml oracle, and exposes the result to Rocq through ELPI foreign calls.
 \end{abstract}
+\section{Motivation}
 
-\section{LiberAbaci and the motivation}
-LiberAbaci uses Rocq for early mathematics education. Its goals are:
-\begin{itemize}[leftmargin=*]
-    \item choose a simple ambient theory and number type;
-    \item import theorems from other theories, possibly via Trocq;
-    \item support declarative proofs with \texttt{assert}, \texttt{enough}, and
-      a Lean-inspired \texttt{calc};
-    \item favor simple tactics over long rewrite scripts.
-\end{itemize}
-The supporting tactics are intended to include \texttt{ring}, \texttt{field}, and
-\texttt{nra}. Recent work by A. Dehorey also points in the same direction. A
-student should, for instance, be able to write an equality such as
+We would like to formalize undergraduate mathematics in a style that remains close to ordinary pen-and-paper reasoning, while retaining the formal guarantees of a proof assistant. We therefore choose to work in a simple ambient theory, with a small collection of familiar mathematical objects and operations, and to allow users to express mathematical arguments through high-level declarative steps rather than low-level proof-assistant transformations.
+\newline \newline
+This setting motivates the question of how algebraic automation should behave when an algebraic expression occurs inside a function that is not itself part of the algebraic theory handled by the tactic. For example, a student should ideally be able to write
+
 \[
- \ln(\pi^2+\pi\times\pi)=\ln(2\pi^2)
+\ln(\pi^2+\pi\times\pi)=\ln(2\pi^2)
 \]
-and let the tactic justify the algebraic step inside the logarithm, without a
-sequence of manual rewrites.
+without having to explicitly expose the intermediate algebraic rewriting
+\[
+\pi^2+\pi\times\pi=2\pi^2.
+\]
+The proof assistant should be able to recognize and justify this transformation automatically.\newline
+The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression. This raises a more general question: how can reflexive algebraic tactics simplify algebraic expressions occurring inside function applications that they do not otherwise understand?
+
+\section{Reflexive Algebraic Normalization}
+The starting point is the way Rocq's reflexive algebraic tactics normally solve
+equalities. Rather than applying a sequence of rewriting lemmas, the tactic
+reifies the input expression into an internal representation of the relevant
+algebraic structure, computes its normal form, and uses this computation to
+construct a proof.
+
+
+\subsection{Ring normalization}
+
+The \texttt{ring} tactic works with integer constants, addition, multiplication, subtraction, and variables. Expressions outside this language are treated as fresh variables during reification. Thus, for an expression such as
+
+$$
+  \pi^2+\pi\mathbin{\times}\pi,
+$$
+
+the constant $\pi$ can be represented by a fresh variable $X$. The tactic can then normalize the resulting polynomial expression to
+
+$$
+  2X^2
+$$
+
+without requiring any knowledge about the mathematical meaning of $\pi$.
+
+More generally, the process can be described in three steps:
+\begin{enumerate}
+\item reify the input expression, replacing supported operations by constructors in an internal polynomial representation and treating unsupported expressions as fresh variables;
+\item normalize the resulting polynomial by collecting coefficients and combining like monomials;
+\item conclude when the normalized expressions are syntactically equal.
+\end{enumerate}
+
+
+Although the arguments of the two logarithms are polynomial expressions, the complete terms
+
+$$
+  \ln(\pi^2+\pi\mathbin{\times}\pi)
+  \qquad\text{and}\qquad
+  \ln(2\pi^2)
+$$
+
+are themselves outside the polynomial language. At the level at which \texttt{ring} sees them, they therefore become distinct atoms. The tactic cannot discover that these atoms are equal by simplifying their arguments.
+
+\subsection{Deep ring simplification}
+
+The natural way to address this limitation is to apply ring simplification recursively inside function applications. Instead of treating an entire unrecognized function application as an indivisible atom, we first simplify the expressions occurring in its arguments and then reconsider the enclosing expression.
+
+For example,
+
+$$
+  \cos(x+\cos(x+x))
+  =
+  \cos(\cos(2x)+(1-(1-x))).
+$$
+
+The relevant subexpressions include
+
+$$
+  x+\cos(x+x),\qquad
+  x+x,\qquad
+  \cos(2x)+(1-(1-x)),
+  \qquad\text{and}\qquad
+  2x.
+$$
+
+The inner expression $x+x$ can first be normalized to $2x$. The enclosing expression can then be reified again, with $\cos(2x)$ as an atom, allowing
+
+$$
+  \cos(2x)+(1-(1-x))
+$$
+
+to be normalized to
+
+$$
+  x+\cos(2x).
+$$
+
+The original equality consequently reduces to
+
+$$
+  \cos(x+\cos(2x))
+  =
+  \cos(x+\cos(2x)).
+$$
+
+This gives a natural recursive strategy for expressions containing unrecognized
+functions: simplify their arguments, rebuild the function applications from
+the simplified arguments, and continue at enclosing levels.
+
+The same idea applies to the motivating logarithm example. The argument
+
+$$
+  \pi^2+\pi\mathbin{\times}\pi
+$$
+
+can be normalized to $2\pi^2$ before the surrounding $\ln$ application is considered. The two sides then contain the same function application, so the outer equality can be closed.
+
+This approach works naturally for \texttt{ring} because polynomial normalization provides a canonical representation of the algebraic expression. For \texttt{field}, however, the situation is more subtle.
+
 
 \section{Where reflexive tactics are insufficient}
 Consider
@@ -149,7 +245,7 @@ remain syntactically different after field normalization.
 This distinction does not matter when the equality of the two fractions is
 the final goal. Once the cross-product equality and the required non-zero
 conditions have been established, the proof is complete. It matters when the
-fraction occurs as an argument of a function that is opaque to the field
+fraction occurs as an argument of a function that is unrecognized by the field
 normalizer. Consider
 
 $$
@@ -325,7 +421,7 @@ This reduction should be distinguished from the usual proof of equality of
 fractions. Cross multiplication is sufficient for such a proof. The gcd
 computation instead provides numerator and denominator quotients that can be
 used to construct a common representation. This is the representation
-needed when the fraction occurs below an otherwise opaque function.
+needed when the fraction occurs below an function outside of the field fragment.
 \section{A complete example}
 
 The following example illustrates the reduction of a fraction that occurs as an argument of a function not handled by the field normalizer. Consider

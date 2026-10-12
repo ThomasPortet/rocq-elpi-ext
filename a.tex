@@ -416,7 +416,7 @@ This reduction should be distinguished from the usual proof of equality of
 fractions. Cross multiplication is sufficient for such a proof. The gcd
 computation instead provides numerator and denominator quotients that can be
 used to construct a common representation. This is the representation
-needed when the fraction occurs below an function outside of the field fragment.
+needed when the fraction occurs below a function outside of the field fragment.
 
 \section{A complete example}
 
@@ -782,7 +782,7 @@ The implementation separates polynomial computation from proof
 construction. OCaml is responsible for the computationally expensive part of
 the gcd computation, while ELPI provides the glue between this
 computation and Rocq. Ltac then uses the
-returned data to construct and verify the algebraic equalities recquired by the
+returned data to construct and verify the algebraic equalities required by the
 existing field-simplification infrastructure. This separation makes it
 possible to use an external computation without making that computation part
 of the trusted proof.
@@ -838,11 +838,27 @@ identities and side conditions. ELPI provides the interface between the
 external computation and the existing Ltac and field-simplification
 infrastructure.
 
-The resulting extension shows that this approach can make field
-normalization useful inside function applications outside the field
-fragment, while retaining proof construction and verification within Rocq.
-A more general deep field simplification procedure remains as the main
-direction for extending the approach.
+A natural next step is to organize
+\texttt{field\_simplify} by levels of depth, processing the deepest
+relevant expressions first and progressively moving towards their
+enclosing expressions. This would allow each level to benefit from
+the simplifications already performed below it, while avoiding
+unnecessary work on expressions that can be simplified at a deeper
+level.
 
+Such a staged strategy could also reduce the number of generated
+inequality and non-zero side conditions by postponing outer-level
+processing until the inner expressions have been simplified. Its
+effectiveness must, however, be established experimentally. A
+quantitative evaluation comparing proof success, execution time,
+and the number of generated side conditions would help determine
+whether this organization improves both efficiency and usability.
+
+The broader objective is to make algebraic automation behave more
+naturally on mathematical expressions, while preserving the
+proof guarantees of Rocq. The combination of recursive
+simplification, polynomial factorization, and proof-producing
+normalization provides a foundation for pursuing this objective
+beyond the ring and field fragments.s
 
 \end{document}

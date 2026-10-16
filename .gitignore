@@ -11,3 +11,6 @@ doc/*.elpi
 *.vo
 *.vos
 *.vok
+*.pdf
+*.fls
+

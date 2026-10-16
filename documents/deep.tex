@@ -146,13 +146,13 @@ $$
 
 can be normalized to $2\pi^2$ before the surrounding $\ln$ application is considered. The two sides then contain the same function application, so the outer equality can be closed.
 
-This approach works naturally for \texttt{ring} because polynomial normalization provides a canonical representation of the algebraic expression. For \texttt{field}, however, the situation is more subtle.
-
-\subsection{Ring simplification versus field simplification}
-
-The recursive strategy described above is implemented by \texttt{ring\_simplify}, which simplifies algebraic expressions inside function applications. An analogous approach using \texttt{field\_simplify} does not suffice for field expressions, as explained in the following section.
+This approach works naturally for \texttt{ring} because polynomial normalization provides a canonical representation of the algebraic expression. 
+The recursive strategy described above is implemented by calling
+\texttt{ring\_simplify}, which takes a list of expressions and
+normalizes them, even inside function applications.
 
 \section{The limits of {\tt field\_simplify}}
+An analogous approach does not work for \texttt{field\_simplify}, which does not produce a canonical representation of the input expression. 
 Consider
 \[
   \frac{\pi}{\pi^2+\pi^2}=\frac{1}{2\pi}.

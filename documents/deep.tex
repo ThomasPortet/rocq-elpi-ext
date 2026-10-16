@@ -270,9 +270,17 @@ theorem with the following shape:
 \end{array}
 \]
 
-In what follows, we name \(N\) and \(D\) the numerator \(\operatorname{norm}(\operatorname{num}(r))\) and the denominator \(\operatorname{norm}(\operatorname{denum}(r))\), respectively.  In this theorem, \(m\) is an integer, and \(\nu\), \(\delta\), and \(\gamma\) are polynomials in normal form.  This theorem is a direct consequence of the previous one, but it makes so that the ultimately produced fraction can be cleaned of common polynomial factors, if these factors are included in the \(\gamma\) polynomial.
+In what follows, we name \(N\) and \(D\) the numerator
+\(\operatorname{norm}(\operatorname{num}(r))\) and the denominator
+\(\operatorname{norm}(\operatorname{denum}(r))\), respectively.  In this theorem, \(m\)
+is an integer, and \(\nu\), \(\delta\), and \(\gamma\) are polynomials
+in normal form.  This theorem is a direct consequence of the previous one, but it makes
+so that the ultimately produced fraction can be cleaned of common polynomial factors,
+if these factors are included in the \(\gamma\) polynomial.
 
-The four values \(m\), \(\nu\), \(\delta\), and \(\gamma\) have to be produced for this theorem to be applied, and this is where the an external computation, which we will call an oracle in the rest of this paper, is needed.
+The four values \(m\), \(\nu\), \(\delta\), and \(\gamma\) have to be produced for
+this theorem to be applied, and this is where the an external
+computation, which we will call an oracle in the rest of this paper, is needed.
 
 In practice, we rely on an implementation of a Gröbner basis algorithm to
 compute the greatest common divisor of the two polynomials.  This algorithm
@@ -280,9 +288,11 @@ operates on polynomials with rational coefficient.  It is easy to translate
 our polynomials \(N\) \(D\) which have integer coefficient, into polynomials
 with rational coefficients, but when processing the result of the greatest
 common divisor computation, we need to recover polynomials with integer
-coefficients.  This is where the integer \(m\) is needed if we have candidate
+coefficients.  This is where the integer \(m\) is needed.  If we have candidate
 polynomials \(\nu'\), \(\delta'\), \(\gamma'\), we only need to find two numbers
-\(\m_1\) and \(m_2\), so that \(m_1 \times \nu' = \nu\) has integer coefficients, and so do \(m_1 \times \delta' = \delta \) and \(m_2 \times \gamma' = \gamma\), in this case \(m=m_1 m_2\).
+\(m_1\) and \(m_2\), so that \(m_1 \times \nu' = \nu\) has integer coefficients, and
+so do \(m_1 \times \delta' = \delta \) and \(m_2 \times \gamma' = \gamma\), in this
+case \(m=m_1 m_2\).
 
 \subsection{A complete example}
 
@@ -328,7 +338,9 @@ The fraction can consequently be represented as
   =
   \frac{X-1}{X+1}.
 \]
-The gcd computation provides a reduced representation of the fraction that can be used to rewrite the argument of \(f\). In particular, the original function application can be rewritten as
+The gcd computation provides a reduced representation of the fraction that
+can be used to rewrite the argument of \(f\). In particular, the original
+function application can be rewritten as
 
 \[
 f\left(\frac{X^2-1}{X^2+2X+1}\right)

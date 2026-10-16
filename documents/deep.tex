@@ -1,6 +1,10 @@
-\documentclass[11pt]{article}
+\documentclass{jflart}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+
+% Numéro et année des JFLAs visées par l'article, obligatoire.
+\jfla{37}{2027}
+
 \usepackage{lmodern}
 \usepackage{enumitem}
 \usepackage{amsmath,amssymb}
@@ -25,8 +29,10 @@
 
 \title{Improving the Tactics \texttt{ring} and \texttt{field}\\
  }
-\author{Thomas Portet}
-
+\author[1]{Thomas Portet}
+\author[2]{Yves Bertot}
+\affil[1]{Université Côte d'Azur, INRIA Sophia Antipolis, France}
+\affil[2]{INRIA Sophia Antipolis, France}
 \begin{document}
 \maketitle
 
@@ -151,7 +157,7 @@ The recursive strategy described above is implemented by calling
 \texttt{ring\_simplify}, which takes a list of expressions and
 normalizes them, even inside function applications.
 
-\section{The limits of {\tt field\_simplify}}
+\section{The limits of \texttt{field\_simplify}}
 An analogous approach does not work for \texttt{field\_simplify}, which does not produce a canonical representation of the input expression. 
 Consider
 \[
@@ -230,7 +236,7 @@ A polynomial gcd provides the missing operation. Given a numerator \(N\) and den
 
 
 \section{Making room for an oracle}
-The existing theorem that justifies the {\tt field\_simplify} tactic has the
+The existing theorem that justifies the \texttt{field\_simplify} tactic has the
 following shape:
 \[
  \operatorname{Fnorm} e = r \Longrightarrow
@@ -253,7 +259,7 @@ denominator are processed independently.  If there is a common factor,
 it is not removed by the calls to \(\operatorname{norm}\).
 
 \label{sec:extension-lemma}
-In our extension to the {\tt field\_simplify} tactic, we instead rely on a
+In our extension to the \texttt{field\_simplify} tactic, we instead rely on a
 theorem with the following shape:
 
 \[
@@ -386,7 +392,7 @@ multiplication.  The datatype description has the following shape:
 type poly =
 | Const of int | Var of int | Add of poly * poly | Mul of poly * poly
 \end{lstlisting}
-This datatype is isomorphic to a subset of the datatype {\tt PExpr} used in
+This datatype is isomorphic to a subset of the datatype \texttt{PExpr} used in
 the implementation of the ring tactic.
 Before performing polynomial computations, the implementation converts a
 \texttt{poly} expression to a sparse multivariate representation.
@@ -407,77 +413,75 @@ it is easy to derive the greatest common divisor.
 \section{The Rocq--ELPI--OCaml interface}
 \subsection{Experimental setup}
 To work at an early experimental stage, we chose a design that re-uses as
-much as possible the current implementation of the {\tt ring}-like
+much as possible the current implementation of the \texttt{ring}-like
 tactics but avoids modifying
 any part of the Rocq main program.  As a result, our experiment
-currently works with an unmodified version of the {\tt rocq-core}
-package, but a modified version of the {\tt rocq-stdlib} package.
+currently works with an unmodified version of the \texttt{rocq-core}
+package, but a modified version of the \texttt{rocq-stdlib} package.
 
-The code in {\tt rocq-core} assumes that all behavior of the {\tt
-  ring}-like tactics is governed by 4 lemmas, each of which is an
+The code in \texttt{rocq-core} assumes that all behavior of the \texttt{ring}-like tactics is governed by 4 lemmas, each of which is an
 instantiation of a generic lemma parameterized by arbitrary ring or
 field structures.  In our case, we need to use the extra lemma presented in
 Section~\ref{sec:extension-lemma} that
 accounts for the possibility of calling an oracle after the
-reification step.  We added such a lemma in the {\tt rocq-stdlib}
-package, under the name {\tt Field\_rw\_pow\_correct\_w\_gcd}, its
-statement is a modification of the existing {\tt
-  Field\_rw\_pow\_correct}, which is used by the existing
-{\tt field\_simplify} tactic.
+reification step.  We added such a lemma in the \texttt{rocq-stdlib}
+package, under the name \texttt{Field\_rw\_pow\_correct\_w\_gcd}, its
+statement is a modification of the existing \texttt{Field\_rw\_pow\_correct}, which is used by the existing
+\texttt{field\_simplify} tactic.
 
 We then created tactics to harness the extra lemma and the oracle.
-Ultimately all these tactics should belong in the {\tt rocq-stdlib}
-package, but since recompiling the {\tt stdlib} package takes about 50
-seconds on our computers, we chose to only include in {\tt
+Ultimately all these tactics should belong in the \texttt{rocq-stdlib}
+package, but since recompiling the \texttt{stdlib} package takes about 50
+seconds on our computers, we chose to only include in \texttt{
   rocq-stdlib} the most stable part of this harness
 and to keep the part that was most unstable in a separate package.  As
-a result, we only have to recompile {\tt stdlib} on rare occasions,
+a result, we only have to recompile \texttt{stdlib} on rare occasions,
 and compiling the separate package between modifications and tests
 only takes a fraction of a second.
 
 We call the tactic that is in a separate package the finishing tactic.
 This tactic is passed as argument to all the new tactics we added to
-the {\tt rocq-stdlib} package under the name {\tt finish\_tac}.
+the \texttt{rocq-stdlib} package under the name \texttt{finish\_tac}.
 
-Four of the new tactics are variations of {\tt field\_simplify},
-{\tt Field\_simplify}, \break {\tt Field\_simplify\_gen}, {\tt
-  Field\_norm\_gen}, and they are named by adding the {\tt \_gcd}
+Four of the new tactics are variations of \texttt{field\_simplify},
+\texttt{Field\_simplify}, \break \texttt{Field\_simplify\_gen}, \texttt{
+  Field\_norm\_gen}, and they are named by adding the \texttt{\_gcd}
 suffix to the name.  Two of the new tactics are variations of
-{\tt ApplyLemmaThen}, {\tt ApplyLemmaThenAndCont} which
-are drawn from the {\tt ring\_simplify} tactic implementation, but we
-preferred renaming them as {\tt rewrites} and {\tt one\_of\_rewrites}.
+\texttt{ApplyLemmaThen}, \texttt{ApplyLemmaThenAndCont} which
+are drawn from the \texttt{ring\_simplify} tactic implementation, but we
+preferred renaming them as \texttt{rewrites} and \texttt{one\_of\_rewrites}.
 
 In practice, the only change implemented by these variations is to
 make it possible to choose the lemma that is being used in the proof,
 and to call the finishing tactic for each of the rewrites performed by
-{\tt one\_of\_rewrites}.
+\texttt{one\_of\_rewrites}.
 
 Our current implementation can be adapted statically to any field structure,
-and we specialized it to the field structure of the type {\tt R} of real
-numbers.  The usual behavior of {\tt field\_simplify} which adapt
+and we specialized it to the field structure of the type \texttt{R} of real
+numbers.  The usual behavior of \texttt{field\_simplify} which adapt
 dynamically to the field structure determined by the type of formulas found
 as argument is not available, as this would require modifying the
-{\tt rocq-core} package.
+\texttt{rocq-core} package.
 \subsection{Polynomial representations}
 
 We need data representing polynomials to be transferred from Rocq to the OCaml (the oracle's implementation language) and back.  Writing directly a converter between these two worlds is difficult, and we preferred to use some ELPI capabilities as a broker.
 
-We defined in {\tt Elpi} a datatype called {\tt polyT} which is an exact mirror
-of the datatype {\tt poly} that we use in the OCaml implementation of the
+We defined in \texttt{Elpi} a datatype called \texttt{polyT} which is an exact mirror
+of the datatype \texttt{poly} that we use in the OCaml implementation of the
 oracle.  Elpi also provides an easy way to write foreign function calls, so
-that we have an easy way to transfer data of type {\tt polyT} to data of type {\tt poly} in the oracle and call the main function of the oracle on this data.  This foreign function interface is described in more detail in Section~\ref{sec:foreign-declaration}.
+that we have an easy way to transfer data of type \texttt{polyT} to data of type \texttt{poly} in the oracle and call the main function of the oracle on this data.  This foreign function interface is described in more detail in Section~\ref{sec:foreign-declaration}.
 
-Rocq uses two types to represent ring expressions: {\tt PExpr} where the
+Rocq uses two types to represent ring expressions: \texttt{PExpr} where the
 constructors describe directly the operation of addition, multiplication, and
-so on, and {\tt Pol} where constructors describe the structure of polynomials
-in normal form.  The function {\tt norm} mentioned in
-Section~\ref{sec:extension-lemma} actually produces objects of type {\tt Pol}.
+so on, and \texttt{Pol} where constructors describe the structure of polynomials
+in normal form.  The function \texttt{norm} mentioned in
+Section~\ref{sec:extension-lemma} actually produces objects of type \texttt{Pol}.
 
 The ELPI language provides powerful inspection mechanisms and interfaces
 to Rocq, so that it easy to write function converting Rocq data into ELPI
 Data.  In the present case, we wrote an ELPI function called
-{\tt pol\_encode} converting polynomial
-of type {\tt Pol} (in Rocq) to values of type {\tt polyT} (in ELPI).
+\texttt{pol\_encode} converting polynomial
+of type \texttt{Pol} (in Rocq) to values of type \texttt{polyT} (in ELPI).
 
 For example, the polynomial
 \[
@@ -488,7 +492,7 @@ can be represented in \texttt{PExpr} as
   \texttt{PEadd (PEX 1) (PEmul (PEX 1) (PEX 1))}.
 \]
 The function \texttt{norm} converts this expression into its canonical
-\texttt{Pol} representation, passing this value to {\tt pol\_encode} then
+\texttt{Pol} representation, passing this value to \texttt{pol\_encode} then
 produces the following result
 encoded as
 \[
@@ -580,12 +584,12 @@ type theory in higher-order constraint logic programming
 
 To establish the correspondence between type \texttt{polyT} (in ELPI) and
 type \texttt{poly} (in OCAML) we only need to write some systematic code
-that makes it explicit that the {\tt add} symbol in ELPI is connected to
-the {\tt Add} constructor in OCaml, the type of both its arguments are
-the same as the type produced by {\tt add}, and pattern matching on a term
-with the {\tt Add} constructor is the same as inspecting the subterms of
-a {\tt add} term.  This correspondance is expressed by the following piece of
-code (looking only at the description for {\tt add}).
+that makes it explicit that the \texttt{add} symbol in ELPI is connected to
+the \texttt{Add} constructor in OCaml, the type of both its arguments are
+the same as the type produced by \texttt{add}, and pattern matching on a term
+with the \texttt{Add} constructor is the same as inspecting the subterms of
+a \texttt{add} term.  This correspondance is expressed by the following piece of
+code (looking only at the description for \texttt{add}).
 \label{sec:foreign-declaration}
 \begin{lstlisting}[language=ML]
 K("add", "binary addition", S(S(N)),
@@ -593,15 +597,15 @@ K("add", "binary addition", S(S(N)),
   M (fun ~ok ~ko t ->
     match t with Add (x, y) -> ok x y | _ -> ko ()))
 \end{lstlisting}
-Here the {\tt K} expresses that we are describing a constructor correspondance,
-The text {\tt S (S (N))} expresses that {\tt add} has two arguments, whose
+Here the \texttt{K} expresses that we are describing a constructor correspondance,
+The text \texttt{S (S (N))} expresses that \texttt{add} has two arguments, whose
 is in the type currently being described.  Line 2 shows how to build a term
-in OCaml corresponding to a term in ELPI whose head symbol is {\tt add}.  This
+in OCaml corresponding to a term in ELPI whose head symbol is \texttt{add}.  This
 line is especially useful when translating terms from ELPI to OCaml.
 Conversely, lines 3 and 4 describe how to convert data from OCaml to ELPI.
 
-This description for {\tt add} is combined with descriptions for {\tt mul},
-{\tt var} (for variables), and {\tt pcst} (for constants) in a declaration
+This description for \texttt{add} is combined with descriptions for \texttt{mul},
+\texttt{var} (for variables), and \texttt{pcst} (for constants) in a declaration
 whose processing generates at the same time type declarations to be loaded
 in ELPI and OCaml code that will perform the conversions when needed.
 
@@ -610,11 +614,11 @@ ELPI function.  In OCaml, this function is provided with type:
 \begin{center}
   \texttt{Gcd.poly\_gcd : poly -> poly -> (int * poly * poly * poly)}.
 \end{center}
-The foreign function interface lets us declare a predicate {\tt gcd\_poly} in
+The foreign function interface lets us declare a predicate \texttt{gcd\_poly} in
 ELPI, where different parts of the result appear as different arguments of
 the predicate.
 
-When processing the declaration of {\tt polyT} and {\tt gcd\_poly}, the
+When processing the declaration of \texttt{polyT} and \texttt{gcd\_poly}, the
 foreign function tool produces the following declarations to be loaded
 in ELPI.
 \begin{lstlisting}
@@ -630,22 +634,22 @@ external func gcd_poly polyT, polyT -> int, polyT, polyT, polyT.
 \end{lstlisting}
 It also produces some OCaml code that can be loaded in Rocq at the same time
 as the oracle implementation.  With all this, any call to the ELPI
-function {\tt gcd\_poly} with two inputs of type {\tt polyT} triggers
-a call to {\tt Gcd.poly\_gcd} in OCaml, with the two corresponding inputs
-of type {\tt poly}.  The results of this execution are then converted back
-to type {\tt polyT}.
+function \texttt{gcd\_poly} with two inputs of type \texttt{polyT} triggers
+a call to \texttt{Gcd.poly\_gcd} in OCaml, with the two corresponding inputs
+of type \texttt{poly}.  The results of this execution are then converted back
+to type \texttt{polyT}.
 
 In this code fragment, \% marks the beginning of a comment.
 
 The main justification theorem requires the various polynomials to be in
-type {\tt Pol}, but the ELPI function {\tt gcd\_poly} returns values in
-type {\tt polyT}.  The easiest way to reconcile the need is to translate each term of type {\tt polyT} into the corresponding term of type {\tt PExpr}.  This
-easy because the type {\tt PolyT} is isomorphic to a sub-language of
-{\tt PExpr}.  The value of type {\tt Pol} can then be obtained by calling
-again the {\tt norm} function.
+type \texttt{Pol}, but the ELPI function \texttt{gcd\_poly} returns values in
+type \texttt{polyT}.  The easiest way to reconcile the need is to translate each term of type \texttt{polyT} into the corresponding term of type \texttt{PExpr}.  This
+easy because the type \texttt{PolyT} is isomorphic to a sub-language of
+\texttt{PExpr}.  The value of type \texttt{Pol} can then be obtained by calling
+again the \texttt{norm} function.
 
-the function {\tt gcd\_poly} has inputs and outputs in types {\tt polyT} and
-{\tt int}.  In the end we wrap this function into a ELPI function that takes
+the function \texttt{gcd\_poly} has inputs and outputs in types \texttt{polyT} and
+\texttt{int}.  In the end we wrap this function into a ELPI function that takes
 as inputs terms of the Rocq language, representing these polynomials and
 numbers.  This is done with the following fragments of code:
 
@@ -664,7 +668,7 @@ gcd_and_factors N D Ne De Gcd MZ :-
 \end{lstlisting}
 
 In turn, the computation can be made available to the language in which
-the {\tt ring}-like tactics have been programmed, namely the {\tt LTac}
+the \texttt{ring}-like tactics have been programmed, namely the \texttt{LTac}
 language.
 \begin{lstlisting}
 Elpi Tactic factorize_by_gcd.
@@ -679,24 +683,24 @@ solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
 \end{lstlisting}
 This describes how a piece of ELPI code can be viewed in Ltac as a Ltac function
 that returns a value (in this case a Rocq quadruplet).  To call this function,
-it will be necessary to write {\tt Elpi factorize\_by\_gcd N D}.
+it will be necessary to write \texttt{Elpi factorize\_by\_gcd N D}.
 
 \subsection{Combining the oracle with the extended theorem}
 We can now come back closer to the Rocq prover, where we only need to
 finish programming our Ltac tactic that uses the result of the oracle in
-combination with the extended theorem {\tt Field\_rw\_pow\_correct\_w\_gcd}
+combination with the extended theorem \texttt{Field\_rw\_pow\_correct\_w\_gcd}
 (also described in Section~\ref{sec:extension-lemma}).
 The proof script still lives in Ltac, but the actual computation is delegated to
 ELPI. The bridge is explicit: an Ltac function builds a Rocq term, calls the
 ELPI computation, and receives back the scale factor, reduced numerator, reduced denominator, and gcd.
 
-For each of the formulas that we want to process with {\tt field\_simplify},
+For each of the formulas that we want to process with \texttt{field\_simplify},
 the formula has already been reified, the numerator and denominator
 have already been normalized (as ring formulas), and the theorem has already
 been instantiated with this reified formula.  The tactic
-{\tt fraction\_finisher} is then called with the initial formula
-(in variable {\tt Term}), the instantiated theorem (in variable {\tt hyp}),
-the denominator (in variable {\tt D}) and the numerator (in variable {\tt N}).
+\texttt{fraction\_finisher} is then called with the initial formula
+(in variable \texttt{Term}), the instantiated theorem (in variable \texttt{hyp}),
+the denominator (in variable \texttt{D}) and the numerator (in variable \texttt{N}).
 The tactic performs the following actions:
 \begin{lstlisting}
 Ltac fraction_finisher Term hyp D N :=
@@ -716,7 +720,7 @@ change t with Term in hyp2;
 end.
 \end{lstlisting}
 At line 4, the oracle is being called and the result stored in variable
-{\tt res}.  In lines 5 to 8 the various parts are retrieved, and at
+\texttt{res}.  In lines 5 to 8 the various parts are retrieved, and at
 line 9, the theorem is further instantiated with these parts.
 
 After this instantiation the theorem statement
@@ -732,24 +736,24 @@ of the equality with the initial formula, because it is convertible
 when reification is correct, then we rewrite with this conditional
 equality, thus obtaining 5 goals.  The first one is the where we performed
 the rewriting operation, in this goal all polynomial normalization operations
-should be performed (tactic {\tt reduce\_Pphi\_pow} on line 40).  The next
+should be performed (tactic \texttt{reduce\_Pphi\_pow} on line 40).  The next
 three goals
 should be trivially provable if the oracle performed its job correctly, hence
-the three calls to the tactic {\tt easy} on line 14.  We have no way to make
+the three calls to the tactic \texttt{easy} on line 14.  We have no way to make
 sure that the last goal can be proved automatically, but the formula should
-should be cleaned up so all functions coming from the {\tt field}
-infrastructure are reduced (tactic {\tt reduce\_Pcond} on line 40).
+should be cleaned up so all functions coming from the \texttt{field}
+infrastructure are reduced (tactic \texttt{reduce\_Pcond} on line 40).
 
 \subsection{A few examples}
-We defined a new tactic named {\tt field\_simplify'} that integrates this
+We defined a new tactic named \texttt{field\_simplify'} that integrates this
 gcd computation.
 
 Given a goal statement of the following form, 
 \begin{lstlisting}
 cos (2 * PI / 4) = cos (3 * PI / 6)
 \end{lstlisting}
-Tactic {\tt field\_simplify (2 * PI / 4)} does not change the goal.  On the other hand, {\tt field\_simplify' (2 * PI / 4)} does replace {\tt (2 * PI / 4)}
-with {\tt (PI / 2)}.
+Tactic \texttt{field\_simplify (2 * PI / 4)} does not change the goal.  On the other hand, \texttt{field\_simplify' (2 * PI / 4)} does replace \texttt{(2 * PI / 4)}
+with \texttt{(PI / 2)}.
 
 \section{Integrating with \texttt{field}}
 
@@ -882,6 +886,6 @@ simplification, polynomial factorization, and proof-producing
 normalization provides a foundation for pursuing this objective
 beyond the ring and field fragments.
 
-\bibliographystyle{plain}
+\bibliographystyle{alpha-fr}
 \bibliography{references}
 \end{document}

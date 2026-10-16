@@ -826,23 +826,7 @@ We evaluated 13 instances, for $(1 \leq n \leq 13)$, running each instance 10 ti
 The execution time increases rapidly with the nesting depth. However, the practical relevance of this growth depends on the depths encountered in actual proofs. For undergraduate mathematical students it is unlikely to encounter more than say depth 5 formula, so the cost is acceptable.
 
 
-\section{Lessons learned}
-The implementation separates polynomial computation from proof construction. The OCaml oracle proposes polynomial factors, while Rocq verifies the algebraic identities needed to justify their use. This separation allows the extension to benefit from external computation without trusting the OCaml implementation for correctness.
 
-The experiment also highlights an important difference between deep ring and
-deep field simplification. For ring expressions, normalization naturally
-provides a canonical polynomial representation, so recursively simplifying
-function arguments is sufficient to make equivalent terms syntactically
-equal. For field expressions, equality can instead be established by cross
-multiplication without producing such a common representation. The gcd
-computation addresses this additional representation problem by making it possible to reduce the fraction.
-
-The current extension nevertheless operates at a limited point in the field
-simplification process. It handles the field expression selected by the
-existing field-simplification infrastructure, but it does not yet recursively
-traverse arbitrary nested field expressions in the same way as the deep ring
-procedure. A fully general deep field simplification procedure would therefore
-require extending the recursive traversal.
 
 % \section{Future work}
 
@@ -863,6 +847,8 @@ require extending the recursive traversal.
 
 
 \section{Conclusion}
+The implementation separates polynomial computation from proof construction. The OCaml oracle proposes polynomial factors, while Rocq verifies the algebraic identities needed to justify their use. This separation allows the extension to benefit from external computation without trusting the OCaml implementation for correctness.
+
 
 Extending reflexive algebraic tactics to expressions occurring inside
 unrecognized function applications requires more than recursively invoking

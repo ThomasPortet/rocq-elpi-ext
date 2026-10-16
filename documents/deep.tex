@@ -57,7 +57,7 @@ without having to explicitly expose the intermediate algebraic rewriting
 \pi^2+\pi\times\pi=2\pi^2.
 \]
 The proof assistant should be able to recognize and justify this transformation automatically.\newline
-The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression.
+The difficulty is that the outer function $\log$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression.
 
 The existing \texttt{ring\_simplify} tactic addresses this issue for ring expressions by recursively simplifying algebraic expressions inside function applications.
 % TODO: Here, the analogous example with log(\frac{2 \pi}{4}) = log (\frac(3 \pi}{6}) devrait être donné, en expliquant que field_simplify does not help as much as ring_simplify does in the other case

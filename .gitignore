@@ -13,4 +13,4 @@ doc/*.elpi
 *.vok
 *.pdf
 *.fls
-
+*.blg

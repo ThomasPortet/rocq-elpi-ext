@@ -1,0 +1,376 @@
+Improving the tactics Ring and Field
+With an oracle and foreign function calls
+Yves Bertot
+joint work with Thomas Portet
+July 2026
+1 / 34
+Plan
+▶ LiberAbaci objectives: easy encoding of easy math
+▶ Situations where the reflexive tactics are unsatisfactory
+▶ A solution for ring using ring simplify
+▶ A remaining problem with field simplify
+▶ Solution greatest common divisor, Gr¨obner bases
+▶ integrating in the reflexive framework
+2 / 34
+LiberAbaci: Using Rocq for early Math Education
+▶ Target: Mathematics, first year of higher education
+▶ fine-tune the ambient theory
+▶ Single type of numbers, use of subsets
+▶ Import theorems from other theories (prospective, using Trocq)
+▶ Declarative progression of proofs
+▶ assert or enough
+▶ calc as inspired by Lean
+▶ Recent work by A. Dehorey
+▶ Rely on a well-chosen easy tactic for justifications
+▶ Solve obvious steps, but avoid being operational (rewrite)
+▶ ring, field, nra
+3 / 34
+The context and the problem
+▶ Given the goal π
+π2+π2 = 1
+2π
+▶ field solves it and requires the proofs of π2 + π2̸ = 0 and
+π̸ = 0
+▶ Given the goal e
+ π
+π2+π2
+
+= e( 1
+2π )
+▶ field fails
+▶ x 7 → ex is a function outside the field fragment
+▶ ring has the same problem (for formulas without divisions)
+▶ π2 + π × π = 2π2 is solved
+▶ lnπ2 + π × π = ln 2π2 is not
+4 / 34
+A study of ring
+▶ A formal language with just integer constants, ×, +, −, and
+variables is defined
+▶ This language is the ring of polynoms.
+▶ Polynoms can also be “normalized”: ordered in variables and
+powers
+▶ Expressions outside the ring fragment considered as
+“variables”
+▶ reification: map formulas to the formal language
+▶ Normalize into polynomial expressions
+▶ When normalized expressions are equal, conclude positively
+5 / 34
+Examples of ring
+▶ π × (π × 1) + π × π is X * (X * 1) + X * X
+▶ X instantiated with π
+▶ π × (π × 1) + π × π = 2 × π × π is
+X * ( X * 1) + X * X = 2 * X * X
+▶ This equality can be solved without knowledge about π
+▶ By contrast ln(π × (π × 1) + π ∗ π) = ln(2 × (π × (π × 1)))
+is X = Y,
+▶ X instanciated with ln(π × (π × 1) + π ∗ π)
+Y instanciated with ln(2 × (π × (π × 1)))
+▶ Two different polynomial expressions: failure
+6 / 34
+Proposed solution: simplify arguments
+▶ loop of ring simplify actions
+▶ until stabilization
+▶ finally solve by reflexivity
+7 / 34
+Example solution for ring
+▶ cos(x + cos(x + x)) = cos(cos(2x) + (1 − (1 − x)))
+▶ collect all formulas appearing as equality members or as
+function arguments
+▶ cos(x + cos(x + x))
+▶ x + cos(x + x)
+▶ x + x
+▶ cos(cos(2x) + (1 − (1 − x)))
+▶ cos(2x) + (1 − (1 − x))
+▶ 2x
+8 / 34
+Normalize the expressions
+▶ Call ring simplify on all these expressions
+▶ Fix an order of unknowns : x, cos(x + x), cos(2x), . . .
+▶ cos(x + cos(x + x)) → cos(x + cos(x + x))
+▶ x + cos(x + x) → x + cos(x + x)
+▶ x + x → 2x
+▶ cos(cos(2x) + (1 − (1 − x))) → cos(cos(2x) + (1 − (1 − x)))
+▶ cos(2x) + (1 − (1 − x)) → x + cos(2x)
+▶ 2x → 2x
+▶ Old equality :
+cos(x + cos(x + x)) = cos(cos(2x) + (1 − (1 − x)))
+▶ New equality : cos(x + cos(2x)) = cos(x + cos(2x)))
+9 / 34
+Common structure for field and ring
+▶ Produce “normal forms” and then test their equality
+▶ For ring
+▶ Normal forms are polynomials
+▶ Equality is syntactic
+▶ For field
+▶ Normal forms are fractions
+▶ Equality is cross product:
+p
+q = r
+s ⇔ p × s = q × r ∧ q̸ = 0 ∧ s̸ = 0
+▶ The equality test of field relies on ring
+▶ field produces side conditions (non-zero conditions)
+10 / 34
+Problem with field simplify for our deep behavior
+▶ field simplify uses normal forms modulo fraction equality
+▶ cross-product equality
+▶ Reification relies on syntactic equality
+▶ 2π
+4 and π
+2 are equal as fractions
+▶ 2 × 2π = 4 × π as verified by ring
+▶ field simplify does not produce the same syntactic
+expression
+▶ cos 2π
+4 is never transformed into cos π
+2
+11 / 34
+Improve field simplify
+▶ A variant that computes reduced fractions
+▶ Rely on external code to compute the gcd of polynomials
+▶ The rest of this talk describes the infrastructure
+12 / 34
+Justification theorems (stripped down)
+▶ Existing theorem for field simplify
+∀l e r , Fnorm l e = r → PCond(condition r ) →
+FEeval l e = Pϕ l (norm (num r ))/Pϕ l (norm (denum r ))
+▶ For our extension
+∀l e r , Fnorm l e = r →
+∀m ν δ γ,
+m̸ = 0 → m × num r = ν × γ → m × denum r = δ × γ →
+PCond(condition r ) →
+FEeval l e = Pϕ l (norm ν)/Pϕ l (norm δ)
+▶ We use an oracle to provide the values m, ν, δ, and γ
+▶ The m non-zero and common divisor conditions are easy
+13 / 34
+Examples of Fnorm, norm, FEeval
+▶ 1/(sin 1/(cos 1 + cos 1))
+▶ Unknown expressions are sin 1, cos 1
+▶ the “field” formula e is 1/(X1/(X2 + X2)
+▶ FEeval [sin 1; cos 1] (1/(X1/(X2 + X2))) is
+1/(sin 1/(cos 1 + cos 1))
+▶ r = Fnorm e is (X2 + X2)/X1 (with conditions)
+▶ norm (num r ) = norm (X2 + X2) is 2X2
+▶ Pϕ [sin 1; cos 1] (2X2) is 2 cos 1
+▶ Two different types of polynomials need FEeval and Pϕ
+14 / 34
+The external program to compute greatest common
+divisors
+▶ Expressions with addition, multiplication, integers, and
+variables
+▶ Takes as input two polynomials Pn and Pd
+▶ Produces a non-zero integer m and three polynomials ν, δ, γ
+▶ m × Pn = ν × γ m × Pδ = δ × γ
+15 / 34
+Elpi as the go-between
+▶ Elpi is a prolog-like language
+▶ Term manipulation
+▶ Twist: foreign function interface
+16 / 34
+The Polynomial type in OCaml
+type poly =
+Const of int
+| Var of int
+| Add of poly * poly
+| Mul of poly * poly
+17 / 34
+Interface declaration
+▶ OCaml code that declares a type in Elpi and conversions to an
+OCaml type
+▶ Type polyT and constructors pcst, var, add, mul
+▶ With a similar poly value to use in OCaml
+▶ To use in other interface declarations
+▶ Elpi declaration in a generated file
+18 / 34
+Full declaration for polyT
+▶ Twenty lines, including some documentation
+let poly_ = AlgebraicData.declare {
+ty = TyName "polyT";
+doc = "A type of ring expressions, simply with numeric constants," ^
+" variables, addition, and multiplication";
+pp = pp_poly;
+constructors = [
+K("pcst","constant polynomial", A(BuiltInData.int, N),
+B (fun n -> Const n),
+M (fun ~ok ~ko t -> match t with Const r -> ok r | _ -> ko ()));
+K("var","indexed variable",A (BuiltInData.int, N),
+B (fun n -> Var n),
+M (fun ~ok ~ko t -> match t with Var n -> ok n | _ -> ko ()));
+K("add","binary addition",S(S(N)),
+B (fun x y -> Add (x, y)),
+M (fun ~ok ~ko t -> match t with Add (x,y) -> ok x y | _ -> ko ()));
+K("mul","binary multiplication",S(S(N)),
+B (fun x y -> Mul (x, y)),
+M (fun ~ok ~ko t -> match t with Mul (x,y) -> ok x y | _ -> ko ()));
+]
+} |> (!<)
+19 / 34
+Header and first constructor
+let poly_ = AlgebraicData.declare {
+ty = TyName "polyT";
+doc = "..";
+pp = pp_poly;
+constructors = [
+K("pcst","constant polynomial", A(BuiltInData.int, N),
+B (fun n -> Const n),
+M (fun ~ok ~ko t ->
+match t with Const r -> ok r | _ -> ko ()));
+▶ Declares an Elpi type with name polyT and constructor pcst
+▶ A(BuiltInData.int, N) is a type description
+▶ B, M give “to OCaml” and “from OCaml” conversions
+▶ The value poly can be used in other interfaces
+20 / 34
+Constructor description for addition
+K("add","binary addition", S(S(N)),
+B (fun x y -> Add (x, y)),
+M (fun ~ok ~ko t ->
+match t with
+Add (x,y) -> ok x y
+| _ -> ko ()));
+▶ S (for self) instead of A in type description
+▶ Matching function makes use of ko when matching fails
+21 / 34
+Encoding and decoding
+▶ Rocq has two datatypes to represent polynomials
+▶ PExpr and Pol
+▶ With a function to convert PExpr to Pol (norm)
+▶ Elpi has the datatype polyT
+▶ We add a conversion function from Pol to polyT
+▶ Complex: Pol is a sparse Horner form
+▶ And a conversion function from PolyT to PExpr
+▶ Easy: PExpr contains a direct mirror of polyT
+22 / 34
+decoding to PExpr and Pol
+func pe_decode_naive polyT -> term.
+pe_decode_naive (pcst Num) {{@PEc Z lp:Num1 }} :- !,
+z_decode Num Num1.
+pe_decode_naive (var Y) {{@PEX Z lp:X}} :- !,
+pos_decode Y X.
+pe_decode_naive (add P1 P2) {{@PEadd Z lp:X1 lp:X2}} :- !,
+pe_decode_naive P1 X1, pe_decode_naive P2 X2.
+pe_decode_naive (mul P1 P2) {{@PEmul Z lp:X1 lp:X2}} :- !,
+pe_decode_naive P1 X1, pe_decode_naive P2 X2.
+func pol_decode polyT -> term.
+pol_decode PolyT_a Result:-
+pe_decode_naive PolyT_a Pe_a,
+coq.reduction.vm.norm {{norm lp:Pe_a}} {{Pol Z}} Result.
+▶ Example of Elpi execution calling CiC execution
+23 / 34
+External function
+▶ OCaml code provides
+Gcd.poly_gcd :
+poly -> poly -> (int * poly * poly * poly)
+24 / 34
+Declaring poly gcd as an Elpi predicate
+let gcd_poly_api =
+let ty = poly_ in
+BuiltIn.MLCode(Pred ("gcd_poly",
+In(ty, "p1", In(ty, "p2",
+Out(API.BuiltInData.int, "factor",
+Out(ty, "gcd",Out (ty, "p1_div",Out (ty, "p2_div",
+Easy("documentation"))))))),
+fun a b _ _ _ _ ~depth ->
+(match Gcd.poly_gcd a b with
+(v1, v2, v3, v4) -> !: v1 +! v2 +! v3 +! v4)),
+DocAbove)
+▶ Declares a predicate called gcd poly (3rd line)
+▶ Use of poly to describe the type of arguments
+▶ Six arguments are passed, with input/output specification
+25 / 34
+Wrapping up the Foreign function interface
+let builtins =
+API.BuiltIn.declare ~file_name:"ext.elpi" [
+MLData poly_;
+gcd_poly_api;
+]
+▶ This is in a file that is compiled and loaded as a plugin
+▶ ext.elpi contains type declarations for Elpi
+▶ dune infrastructure is added to process these files
+26 / 34
+Generated Elpi declarations
+kind polyT type.
+external symbol pcst : int -> polyT = "1". %doc
+external symbol var : int -> polyT = "1". %doc
+external symbol add : polyT -> polyT -> polyT = "1". %doc
+external symbol mul : polyT -> polyT -> polyT = "1". %doc
+external func gcd_poly polyT, polyT ->
+int,polyT, polyT, polyT
+27 / 34
+Elpi code with foreign function call
+func gcd_and_factors term, term -> term, term, term, term.
+gcd_and_factors N D Ne De Gcd’ MZ :-
+pol_encode N Nx, pol_encode D Dx,
+gcd_poly Nx Dx M G’ N’ D’,
+pol_decode N’ Ne, pol_decode D’ De,
+pol_decode G’ Gcd’, z_decode M MZ.
+▶ Type term from the point of view of Elpi is for CiC terms
+▶ from the point of view of CiC the types should be Pol Z, Pol
+Z, Z, Pol Z, Pol Z, Pol Z
+28 / 34
+Availability as a tactic
+lpi Tactic factorize_by_gcd.
+Elpi Accumulate Plugin "ext.elpi".
+Elpi Accumulate File encode.
+Elpi Accumulate lp:{{
+solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
+gcd_and_factors N D N’ D’ Gcd LCM,
+(refine {{(lp:LCM, (lp:N’, (lp:D’, lp:Gcd)))}} G GL).
+}}.
+▶ A tactic that returns a value in CiC (a quadruplet)
+29 / 34
+Including in Field implementation
+▶ field and ring have OCaml and stdlib parts
+▶ Adding a new theorem should be handled by Rocq-core
+▶ Not in this version
+▶ Workaround to stay in stdlib: parameterizable tactic
+▶ Perform the same pre and post-processing as before
+▶ parameter 1: the normalization function
+▶ parameter 2: the justification theorem
+▶ parameter 3: a finishing tactic
+30 / 34
+What to reuse
+▶ field simplify pre and post-processes expressions
+▶ Computes all unknowns and abstracted formulas
+▶ Applies the pre-defined lemma to each expression
+▶ We need to provide the lemma ourselves
+▶ Obtains an equality and rewrite with it
+▶ We collect the numerator and denominator
+▶ Perform our computation, rewrite with new results
+▶ Keep the infrastructure by modifying stdlib
+▶ Modified versions of Field simplify gcd, Field norm gen,
+ReflexiveRewriteTactic, and ApplyLemmaThenAndCont
+tactics
+31 / 34
+Collecting the results and finishing
+Ltac fraction_finisher Term hyp D N :=
+let hyp2 := fresh "rew_l2" in
+let res :=
+constr:(ltac:(elpi factorize_by_gcd
+ltac_term:(N) ltac_term:(D))) in
+let F := eval cbv [fst] in (fst res) in let N2 := ... in
+assert (hyp2 := hyp F N2 D2 Gcd);
+lazymatch type of hyp2 with
+| _ -> _ -> _ -> _ -> ?t = ?r =>
+change t with Term in hyp2; try rewrite hyp2; clear hyp hyp2;
+[reduce_Pphi_pow | easy | easy | easy | reduce_PCond]
+end.
+32 / 34
+Lessons learned
+▶ Navigating interfaces between 4 languages
+▶ Calculus of Constructions (CiC, Ltac, Elpi, OCaml
+▶ Ltac at the center
+▶ Translation of CiC to OCaml possible directly but heavy
+▶ Elpi provides a concise approach
+▶ Easy access to typechecking and conversion
+▶ ring/field infrastructure written in Ltac
+▶ Hard to read and evolve
+▶ Bugs are very hard to track
+▶ Recent bug: a 0 instead of a 1 inside the OCaml code
+33 / 34
+Future work
+▶ deep field
+▶ Careful staging of sub-expressions
+▶ Avoid redundancy in generated conditions
+▶ Handling exponents in both deep ring and deep field
+▶ commutative group isomorphism
+▶ poly gcd needs improvements: use of unbound integers
+34 / 34

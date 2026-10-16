@@ -4,3 +4,10 @@ doc/*.elpi
 *aux
 *glob
 *.cache
+*.bbl
+*.log
+*.gz
+*.out
+*.vo
+*.vos
+*.vok

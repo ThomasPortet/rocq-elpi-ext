@@ -8,7 +8,6 @@ Definition RField_lemma5 :=
   (@f_equal _ _ Rinv) (F2AF (Eqsth R) (Eq_ext _ _ _) Rfield) R_rm R_power_theory
   get_signZ_th (Ztriv_div_th Rset IZR).
   
-Definition Pmul := Pmul 0%Z 1%Z Z.add Z.mul Z.eqb.
 Local Notation "x ?== y" := (Peq Z.eqb x y) (at level 70, no associativity).
 
 (* Term is the expression that was given by the user for simplification.
@@ -96,7 +95,91 @@ field_simplify_gcd fs5  / (PI / (PI ^ 2 + PI ^ 2)/(5/5)) (4 / (8 * PI)).
 easy.
 all: nra.
 Qed.
+Fixpoint r (n : nat) (x : R) : R :=
+  match n with
+  | O => x
+  | S n' => sin (r n' x)
+  end.
 
+Fixpoint r_alt (n : nat) (x : R) : R :=
+  match n with
+  | O => x
+  | S n' => sin (2 * r_alt n' x / 2)
+  end.
+Lemma test2 x :
+  r 2 x = r_alt 2 x.
+Proof.
+  unfold r, r_alt.
+Lemma test_nested_inner_first (x : R) :
+  x <> 0 ->
+  x + 1 <> 0 ->
+  exp (((x^2 - 1) / (x^2 + 2*x + 1)) /
+       (((x^2 - 1) / (x^2 + 2*x + 1)) + 1)) =
+  exp ((x - 1) / (2*x)).
+Proof.
+  intros Hx Hx1.
+  (* First reduce the inner fraction. *)
+  field_simplify_gcd fs5 /
+    ((x^2 - 1) / (x^2 + 2*x + 1))
+    ((x - 1) / (x + 1)).
+    field_simplify.
+    f_equal.
+    field.
+  (* Inspect the goals here before proceeding. *)
+Abort.
+Lemma nested_sin_stress_test (x : R) :
+  x <> 0 ->
+  x <> 1 ->
+  x <> -1 ->
+  sin (
+    (sin (
+      (x^2 - 1) / (x^2 + 2*x + 1)
+    ) - sin (
+      (x - 1) / (x + 1)
+    )) / (
+      (x^2 - 1) / (x^2 + 2*x + 1) +
+      (x - 1) / (x + 1)
+    )
+  ) =
+  sin (
+    (sin (
+      (x - 1) / (x + 1)
+    ) - sin (
+      (x^2 - 1) / (x^2 + 2*x + 1)
+    )) / (
+      (x - 1) / (x + 1) +
+      (x^2 - 1) / (x^2 + 2*x + 1)
+    )
+  ).
+Proof.
+  intros.
+  field_simplify_gcd fs5 / ((x^2 - 1) / (x^2 + 2*x + 1))
+    ((x - 1) / (x + 1)).
+    reflexivity.
+ nra. nra.
+ Qed.
+
+Lemma test2 x :
+  r 2 x = r_alt 2 x.
+Proof.
+  unfold r, r_alt.
+  Time field_simplify_gcd fs5 /  (2 * sin (2 * x / 2) / 2)
+(2 * x / 2) .
+  simpl.
+  easy.
+  nra. nra.
+Qed.
+Lemma test10 x :
+  r 10 x = r_alt 10 x.
+Proof.
+  unfold r, r_alt.
+  Time field_simplify_gcd fs5 / (sin (sin (sin (sin (sin (sin (sin (sin (sin x)))))))))  (2 * sin (2 * sin (2 * sin (2 * sin (2 * sin (2 * sin (2 * sin (2 * sin (2 * sin (2 * x / 2) / 2) / 2) / 2) /
+2) / 2) / 2) / 2) / 2) / 2)
+(2 * x / 2) .
+  simpl.
+  easy.
+  nra. nra.
+Qed.
 Lemma field_simplify_sandbox : cos (PI / 2) = cos (2 * (PI / 4)).
 Proof.
 field_simplify (2 * (PI / 4)).

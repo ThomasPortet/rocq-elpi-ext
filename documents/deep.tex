@@ -277,7 +277,7 @@ theorem with the following shape:
 \]
 
 In what follows, we name \(N\) and \(D\) the numerator
-\(\operatorname{norm}(\operatorname{num}(r))\) and the denominator
+\(\operatorname{norm}(\operatorname{num}(r))\) and the denominator \break
 \(\operatorname{norm}(\operatorname{denum}(r))\), respectively.  In this theorem, \(m\)
 is an integer, and \(\nu\), \(\delta\), and \(\gamma\) are polynomials
 in normal form.  This theorem is a direct consequence of the previous one, but it makes
@@ -295,7 +295,7 @@ our polynomials \(N\) \(D\) which have integer coefficient, into polynomials
 with rational coefficients, but when processing the result of the greatest
 common divisor computation, we need to recover polynomials with integer
 coefficients.  This is where the integer \(m\) is needed.  If we have candidate
-polynomials \(\nu'\), \(\delta'\), \(\gamma'\), we only need to find two numbers
+polynomials \(\nu'\), \(\delta'\), \(\gamma'\) with rational coefficients, we only need to find two numbers
 \(m_1\) and \(m_2\), so that \(m_1 \times \nu' = \nu\) has integer coefficients, and
 so do \(m_1 \times \delta' = \delta \) and \(m_2 \times \gamma' = \gamma\), in this
 case \(m=m_1 m_2\).
@@ -381,8 +381,12 @@ $$
   [(1,2);(4,1)].
 $$
 Polynomial arithmetic, monomial ordering, reduction, and Buchberger's
-algorithm operate on this sparse representation. The result is converted back
-to \texttt{poly} when it is returned by the oracle.
+algorithm operate on this sparse representation. Rational coefficients
+are used because the polynomial computations sometimes use division
+and can introduce non-integral coefficients. Monomials are ordered
+lexicographically, with lower variable indices taking precedence. This order
+determines the leading monomial used in polynomial reduction and
+Buchberger's algorithm.
 
 To facilitate the communication with Rocq's implementation of polynomial, we
 chose to implement an OCaml datatype of ring expressions with integer
@@ -395,20 +399,16 @@ type poly =
 This datatype is isomorphic to a subset of the datatype \texttt{PExpr} used in
 the implementation of the ring tactic.
 Before performing polynomial computations, the implementation converts a
-\texttt{poly} expression to a sparse multivariate representation.
+input expressions of type \texttt{poly}
+to type {\texttt mpoly}.  After computations, results are converted back
+to \texttt{poly}.
 
-Rational coefficients are used because the polynomial
-computations can introduce non-integral coefficients. Monomials are ordered
-lexicographically, with lower variable indices taking precedence. This order
-determines the leading monomial used in polynomial reduction and
-Buchberger's algorithm.
 We use Gröbner basis computations because it is well known that the
 least common multiplier of two polynomials \(p\) and \(q\) appears naturally
 in the Gröbner basis generated for the family \((1 - X_0) p, X_0 q\), if \(X_0\)
 is not used in \(p\) \(q\) and this variable is smaller than all others in the
 order used for the computation.  Once the least common multiplier is obtained,
 it is easy to derive the greatest common divisor.
-
 
 \section{The Rocq--ELPI--OCaml interface}
 \subsection{Experimental setup}
@@ -478,7 +478,7 @@ in normal form.  The function \texttt{norm} mentioned in
 Section~\ref{sec:extension-lemma} actually produces objects of type \texttt{Pol}.
 
 The ELPI language provides powerful inspection mechanisms and interfaces
-to Rocq, so that it easy to write function converting Rocq data into ELPI
+to Rocq, so that it is easy to write functions converting Rocq data into ELPI
 Data.  In the present case, we wrote an ELPI function called
 \texttt{pol\_encode} converting polynomial
 of type \texttt{Pol} (in Rocq) to values of type \texttt{polyT} (in ELPI).
@@ -500,7 +500,9 @@ encoded as
 \]
 
 \subsection{ELPI as the bridge}
-
+The various data transformations that occur when calling the oracle (in OCaml)
+are summarized in the following diagram.  Each box describe a different
+programming language.
 
 \noindent
 \begin{tikzpicture}[

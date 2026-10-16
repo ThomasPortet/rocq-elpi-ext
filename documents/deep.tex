@@ -10,6 +10,8 @@
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{tikz-cd}
+\usetikzlibrary{arrows.meta, positioning, calc}
+
 \lstdefinelanguage{Rocq}{
   morekeywords={Fixpoint,match,with,end,fun,let,in,Theorem,
     Lemma,Proof,Qed,Definition,forall,exists},
@@ -209,11 +211,8 @@ arguments could be proved equal.
 The required operation is consequently stronger than proving equality of
 the two fractions. We need to transform both fractions to a common
 representative that can be used in the surrounding expression. For the
-example above, a suitable representative is
+example above, a suitable representative is $ \frac{\pi}{2}$.
 
-$$
-  \frac{\pi}{2}.
-$$
 
 The desired transformation is therefore
 
@@ -224,29 +223,7 @@ $$
   \longleftarrow
   \cos\left(\frac{2\pi}{4}\right).
 $$
-
-A polynomial gcd provides the missing operation. Given a numerator
-$N$ and denominator $D$, we compute a common factor $G$ and corresponding
-quotients.  For example,
-
-$$
-  N=X^2-1,\qquad D=X+1
-$$
-
-have the common factor $G=X+1$, giving
-
-$$
-  N=(X-1)G,\qquad D=1G.
-$$
-
-The fraction can therefore be represented by
-
-$$
-  \frac{X-1}{1}.
-$$
-
-This reduction provides a common representation that can be propagated
-through an enclosing function application.
+A polynomial gcd provides the missing operation. Given a numerator \(N\) and denominator \(D\), we compute a common factor \(\gamma\) and the corresponding quotients \(\nu\) and \(\delta\). This yields a reduced representation of the fraction that can be propagated through an enclosing function application.
 
 
 \section{The gcd oracle}
@@ -437,7 +414,83 @@ Buchberger's algorithm.
 
 
 We use Buchberger's algorithm as part of the external polynomial computation. This algorithm is well-known and an implementation of it was presented by Théry \cite{thery2001machine}. Developing a new Gröbner basis algorithm is not the objective of this work. Instead, the polynomial computation is treated as an untrusted oracle: its output is used to propose a factorization, and Rocq independently verifies the algebraic identities required to justify the resulting reduction. The correctness of the extension therefore does not depend on trusting the OCaml implementation.
+\newline
 
+\noindent
+\begin{tikzpicture}[
+    >=Stealth,
+    stage/.style={
+        draw,
+        line width=0.8pt,
+        minimum height=3.6cm,
+        align=center
+    },
+    flow/.style={->, line width=0.8pt},
+    label/.style={font=\small},
+    stagetitle/.style={
+    font=\bfseries\small,
+    text=blue!55!black
+}
+]
+
+\node[stage, minimum width=3.0cm] (rocq) {};
+\node[anchor=north west, stagetitle] at ([xshift=2mm,yshift=-2mm]rocq.north west)
+    {Rocq};
+
+\node[stage, right=0.65cm of rocq,
+      minimum width=3.0cm] (elpi1) {};
+\node[anchor=north west, stagetitle] at ([xshift=2mm,yshift=-2mm]elpi1.north west)
+    {Elpi};
+
+\node[stage, right=0.5cm of elpi1,
+      minimum width=2.1cm] (ocaml) {};
+\node[anchor=north west, stagetitle] at ([xshift=2mm,yshift=-2mm]ocaml.north west)
+    {OCaml};
+
+\node[stage, right=0.5cm of ocaml,
+      minimum width=3.0cm] (elpi2) {};
+\node[anchor=north west, stagetitle] at ([xshift=2mm,yshift=-2mm]elpi2.north west)
+    {Elpi};
+
+\node (expr) at ([xshift=-0.9cm]rocq.center)
+    {$\texttt{PExpr}$};
+
+\node (pol) at ([xshift=1.1cm]rocq.center)
+    {$\texttt{Pol}$};
+
+\draw[flow] (expr) -- node[above,label] {\texttt{norm}} (pol);
+
+\node (polyT1) at ([xshift=0.5cm]elpi1.center)
+    {$\texttt{polyT}$};
+
+\draw[flow] (pol.east) --
+    node[above,label, pos=0.8] {\texttt{pol\_encode}}
+    ([xshift=0cm]polyT1.west |- pol.east);
+
+\node (poly)at (ocaml.center) {\texttt{poly}};
+
+\draw[flow] (polyT1.east) --
+    ( poly.west);
+
+\node (polyT2) at ([xshift=-0.8cm]elpi2.center) {\texttt{polyT}};
+
+\draw[flow] (poly.east) -- (polyT2.west);
+
+\node[stage, minimum width=3.0cm, right=0.65cm of elpi2,] (rocq2) {};
+\node[anchor=north west, stagetitle] at ([xshift=2mm,yshift=-2mm]rocq2.north west)
+    {Rocq};
+
+\node (expr2) at ([xshift=-0.9cm]rocq2.center)
+    {$\texttt{PExpr}$};
+
+\node (pol2) at ([xshift=1.1cm]rocq2.center)
+    {$\texttt{Pol}$};
+  \draw[flow] (polyT2.east) --
+    node[above,label, pos=0.35] {\texttt{pe\_decode}}
+    ([xshift=0cm]expr2.west |- polyT2.east);
+\draw[flow] (expr2) -- node[above,label] {\texttt{norm}} (pol2);
+
+\end{tikzpicture}
 
 \section{The Rocq--ELPI--OCaml interface}
 \subsection{Experimental setup}

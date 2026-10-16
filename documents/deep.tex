@@ -57,7 +57,7 @@ without having to explicitly expose the intermediate algebraic rewriting
 \pi^2+\pi\times\pi=2\pi^2.
 \]
 The proof assistant should be able to recognize and justify this transformation automatically.\newline
-The difficulty is that the outer function $\ln$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression.
+The difficulty is that the outer function $\log$ is not a ring operation. Consequently, the algebraic tactic cannot treat the whole expression as a ring expression.
 
 The existing \texttt{ring\_simplify} tactic addresses this issue for ring expressions by recursively simplifying algebraic expressions inside function applications.
 % TODO: Here, the analogous example with log(\frac{2 \pi}{4}) = log (\frac(3 \pi}{6}) devrait être donné, en expliquant que field_simplify does not help as much as ring_simplify does in the other case
@@ -586,7 +586,8 @@ type theory in higher-order constraint logic programming
 
 To establish the correspondence between type \texttt{polyT} (in ELPI) and
 type \texttt{poly} (in OCAML) we only need to write some systematic code
-that makes it explicit that the \texttt{add} symbol in ELPI is connected to
+that makes it explicit that some symbols in ELPI are connected to some
+constructors in OCaml, for instance \texttt{add} symbol in ELPI is connected to
 the \texttt{Add} constructor in OCaml, the type of both its arguments are
 the same as the type produced by \texttt{add}, and pattern matching on a term
 with the \texttt{Add} constructor is the same as inspecting the subterms of
@@ -641,17 +642,15 @@ a call to \texttt{Gcd.poly\_gcd} in OCaml, with the two corresponding inputs
 of type \texttt{poly}.  The results of this execution are then converted back
 to type \texttt{polyT}.
 
-In this code fragment, \% marks the beginning of a comment.
-
 The main justification theorem requires the various polynomials to be in
 type \texttt{Pol}, but the ELPI function \texttt{gcd\_poly} returns values in
 type \texttt{polyT}.  The easiest way to reconcile the need is to translate each term of type \texttt{polyT} into the corresponding term of type \texttt{PExpr}.  This
-easy because the type \texttt{PolyT} is isomorphic to a sub-language of
+is easy because the type \texttt{PolyT} is isomorphic to a sub-language of
 \texttt{PExpr}.  The value of type \texttt{Pol} can then be obtained by calling
 again the \texttt{norm} function.
 
 the function \texttt{gcd\_poly} has inputs and outputs in types \texttt{polyT} and
-\texttt{int}.  In the end we wrap this function into a ELPI function that takes
+\texttt{int}.  In the end we wrap this function into an ELPI function that takes
 as inputs terms of the Rocq language, representing these polynomials and
 numbers.  This is done with the following fragments of code:
 
@@ -668,10 +667,13 @@ gcd_and_factors N D Ne De Gcd MZ :-
   pol_decode N' Ne, pol_decode D' De,
   pol_decode G Gcd, z_decode M MZ.
 \end{lstlisting}
+Note that in this code fragment, line 4 corresponds to the execution
+of the function \texttt{norm}, which is actually written in the Gallina
+language of the Rocq prover.
 
-In turn, the computation can be made available to the language in which
-the \texttt{ring}-like tactics have been programmed, namely the \texttt{LTac}
-language.
+In turn, the computation can be made available to the \texttt{Ltac}
+language in which
+the \texttt{ring}-like tactics have been programmed.
 \begin{lstlisting}
 Elpi Tactic factorize_by_gcd.
 Elpi Accumulate Plugin "ext.elpi".
@@ -685,16 +687,16 @@ solve (goal _ _ _ _ [trm N, trm D] as G) GL :-
 \end{lstlisting}
 This describes how a piece of ELPI code can be viewed in Ltac as a Ltac function
 that returns a value (in this case a Rocq quadruplet).  To call this function,
-it will be necessary to write \texttt{Elpi factorize\_by\_gcd N D}.
+it will be necessary to write \texttt{elpi factorize\_by\_gcd N D}.
 
 \subsection{Combining the oracle with the extended theorem}
 We can now come back closer to the Rocq prover, where we only need to
 finish programming our Ltac tactic that uses the result of the oracle in
 combination with the extended theorem \texttt{Field\_rw\_pow\_correct\_w\_gcd}
 (also described in Section~\ref{sec:extension-lemma}).
-The proof script still lives in Ltac, but the actual computation is delegated to
-ELPI. The bridge is explicit: an Ltac function builds a Rocq term, calls the
-ELPI computation, and receives back the scale factor, reduced numerator, reduced denominator, and gcd.
+The main code is in Ltac, but the call to the oracle relies on a function
+that was written in
+ELPI.
 
 For each of the formulas that we want to process with \texttt{field\_simplify},
 the formula has already been reified, the numerator and denominator
@@ -733,57 +735,55 @@ number \(m\) is non zero.  The next two assumptions are the factorization
 identities, the last assumption is the collection of non-zero conditions
 that was collected at the time of reification.
 
-On ligne 12, we change the left-hand side
+On line 12, we change the left-hand side
 of the equality with the initial formula, because it is convertible
 when reification is correct, then we rewrite with this conditional
-equality, thus obtaining 5 goals.  The first one is the where we performed
+equality, thus obtaining 5 goals.  The first one is where we performed
 the rewriting operation, in this goal all polynomial normalization operations
 should be performed (tactic \texttt{reduce\_Pphi\_pow} on line 40).  The next
 three goals
 should be trivially provable if the oracle performed its job correctly, hence
 the three calls to the tactic \texttt{easy} on line 14.  We have no way to make
-sure that the last goal can be proved automatically, but the formula should
+sure that the last goal can be proved automatically, but the formula
 should be cleaned up so all functions coming from the \texttt{field}
 infrastructure are reduced (tactic \texttt{reduce\_Pcond} on line 40).
 
-\subsection{A few examples}
 We defined a new tactic named \texttt{field\_simplify'} that integrates this
-gcd computation.
+gcd computation.  We did not prove it, and this not required to guarantee
+the validity of the \texttt{field\_simplify'} tactic, but we believe that
+this tactic essentially performs field normalization, while the original
+\texttt{field\_simplify} tactic was not.
+
+\subsection{A few examples}
 
 Given a goal statement of the following form, 
 \begin{lstlisting}
 cos (2 * PI / 4) = cos (3 * PI / 6)
 \end{lstlisting}
-Tactic \texttt{field\_simplify (2 * PI / 4)} does not change the goal.  On the other hand, \texttt{field\_simplify' (2 * PI / 4)} does replace \texttt{(2 * PI / 4)}
+The previous tactic \texttt{field\_simplify (2 * PI / 4)} does not change
+the goal.  On the other hand, our new tactic
+\texttt{field\_simplify' (2 * PI / 4)} does replace \texttt{(2 * PI / 4)}
 with \texttt{(PI / 2)}.
 
-\section{Integrating with \texttt{field}}
+\subsection{Integrating in a deep behavior}
+As a final result, we wish to have a simple tactic with no arguments that
+solves the goals presented in our motivation.  We implemented such a tactic
+by collecting all formulas that could potentially be improved using
+field no
+\texttt{field\_simplify'} and repeating the process until the main goal
+stabilizes.  Essentially the same computation as described in
+Section~\ref{sec:deep-ring}.
 
+We share code between \texttt{deep\_ring} and \texttt{deep\_field}.  The prefix
+\texttt{deep} is here to express that ring or field normalization will occur, even
+if the processed formulas are buried deeply inside arguments of function outside
+the corresponding languages.
 
-The gcd computation is integrated into the existing \texttt{field}
-simplification procedure rather than implemented as a separate user-facing
-tactic. The extension replaces the part of the simplification process that
-normally handles the numerator and denominator with a parameterizable Ltac
-function.
-
-In a typical call, the function receives the term being rewritten, the
-hypothesis produced by field normalization, and the denominator and numerator:
-\begin{lstlisting}[language=ML]
-fraction_finisher Term hyp D N.
-\end{lstlisting}
-
-It then calls \texttt{factorize\_by\_gcd} to obtain the scale factor, reduced
-numerator, reduced denominator, and gcd. The tactic uses \texttt{easy} to discharge the non-zero side condition when the available hypotheses suffice. It then applies the existing field-simplification theorem using the reduced numerator and denominator.
-
-
-The integration is therefore deliberately asymmetric: the existing
-\texttt{field} infrastructure remains responsible for identifying and
-simplifying field expressions, while the new gcd computation supplies the
-common representation needed when the resulting fraction occurs inside a
-function outside the field fragment. The ELPI entry point is consequently an
-implementation subpart of the extended simplification procedure rather than a
-new user-facing tactic.
-
+The first stage is to collect all subformulas that are potential arguments
+to \texttt{ring\_simplify} of \texttt{field\_simplify'}, and then call the simplify
+tactics on these arguments.  After the first round, more normalization may
+become apparent, and the process should be repeated until the formulas
+stabilize.
 \section{Quantitative evaluation}
 
 To evaluate the computational cost of the approach, we consider a
@@ -826,7 +826,27 @@ We evaluated 13 instances, for $(1 \leq n \leq 13)$, running each instance 10 ti
 The execution time increases rapidly with the nesting depth. However, the practical relevance of this growth depends on the depths encountered in actual proofs. For undergraduate mathematical students it is unlikely to encounter more than say depth 5 formula, so the cost is acceptable.
 
 
+\section{Lessons learned}
+The implementation separates polynomial computation from proof
+construction. The OCaml oracle proposes polynomial factors, while Rocq
+verifies the algebraic identities needed to justify their use. This
+separation allows the extension to benefit from external computation
+without trusting the OCaml implementation for correctness.
 
+The experiment also highlights an important difference between deep ring and
+deep field simplification. For ring expressions, normalization naturally
+provides a canonical polynomial representation, so recursively simplifying
+function arguments is sufficient to make equivalent terms syntactically
+equal. For field expressions, equality can instead be established by cross
+multiplication without producing such a common representation. The gcd
+computation addresses this additional representation problem by making it possible to reduce the fraction.
+
+The current extension nevertheless operates at a limited point in the field
+simplification process. It handles the field expression selected by the
+existing field-simplification infrastructure, but it does not yet recursively
+traverse arbitrary nested field expressions in the same way as the deep ring
+procedure. A fully general deep field simplification procedure would therefore
+require extending the recursive traversal.
 
 % \section{Future work}
 
@@ -855,25 +875,56 @@ unrecognized function applications requires more than recursively invoking
 the existing normalization procedures. For ring expressions, polynomial
 normalization already provides a canonical representation that can be
 propagated through the surrounding function application. For field
-expressions, cross multiplication can prove equality without producing such a
-representation, so an additional reduction step is required.
+expressions, the use cross multiplication makes that reducing each
+expression to a normal form is not need.  As a result, no tactic was
+provided to perform field normalization.  In spite of the similarity in names,
+\texttt{field\_simplify} does provide what \texttt{ring\_simplify} does.
 
-This work uses a polynomial gcd computation to provide that reduction. An
+This work uses a polynomial gcd computation to provide the missing
+normalization. An
 OCaml oracle computes the common factor and the corresponding numerator and
 denominator quotients, while Rocq verifies the resulting factorization
 identities and side conditions. ELPI provides the interface between the
 external computation and the existing Ltac and field-simplification
 infrastructure.
 
-A natural next step is to extend the approach to a general deep field-simplification procedure that processes nested expressions from the inside out. This could also reduce unnecessary computation and the number of generated side conditions, but its effectiveness must be evaluated experimentally. Measurements of proof success, execution time, and generated side conditions would help assess the practical benefits of the approach.
+It should be noted that a formally verified implementation of Buchberger's
+algorithm was studied by L. Théry \cite{thery2001machine}.  When consulted
+about implementing the algorithm for this need, he nevertheless chose to
+direct to an untrusted implementation.
+
+The current implementation is a proof-of-concept, implemented using the
+simplest forms of bridge between Rocq code and the external oracle.  There
+are several direction in which to progress.  The first pass is to
+reconsider all data transformations to reduce the number of intermediate
+steps.  In particular, we think translating directly the \texttt{Pol} type from
+Rocq into the \texttt{mpoly} type from OCaml and back, without going through the
+\texttt{poly}, \texttt{polyT}, and \texttt{PExpr}, and without needing to execute
+the Rocq-defined \texttt{norm} function.
+
+A second area of progress is to choose carefully the order in which
+sub-expressions are considered for field or ring normalization.  The leading
+idea is that expressions should not be considered for normalization
+if they still contain function calls with subterms that have not been
+normalized yet.  This should lead to a
+procedure that processes nested expressions from
+the inside out. This could also reduce unnecessary computation and the
+number of generated side conditions, but its effectiveness must be
+evaluated experimentally. Measurements of proof success, execution
+time, and generated side conditions would help assess the practical
+benefits of the approach.
 
 The broader objective is to make algebraic automation behave more
 naturally on mathematical expressions, while preserving the
 proof guarantees of Rocq. The combination of recursive
-simplification, polynomial factorization, and proof-producing
+simplification, polynomial factorization, and automatically verifiable
 normalization provides a foundation for pursuing this objective
 beyond the ring and field fragments.
 
+\paragraph{Acknowledgements}  The authors would like to thank Laurent Théry,
+Davide Fissore, and Enrico Tassi for numerous suggestions and help on this
+experiment.
 \bibliographystyle{alpha-fr}
+
 \bibliography{references}
 \end{document}
